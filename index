@@ -1,0 +1,3320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mirai-Compass ver2.40</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color-start: #6D5BBA;
+      --primary-color-end: #8D6BCC;
+      --background-grad-start: #F8F7FF;
+      --background-grad-end: #F2F0FF;
+      --card-bg: #ffffff;
+      --text-primary: #1A1A2E;
+      --text-secondary: #5A5A78;
+      --border-color: #EAEAF2;
+      --shadow-sm: 0 4px 12px rgba(0,0,0,0.05);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.08);
+      --font-family-base: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--font-family-base);
+      padding: 0; margin: 0;
+      background: linear-gradient(135deg, var(--background-grad-start) 0%, var(--background-grad-end) 100%);
+      min-height: 100vh;
+      color: var(--text-primary);
+    }
+    .main-container {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 32px;
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .left-panel {
+        position: sticky;
+        top: 24px;
+        height: calc(100vh - 48px);
+        overflow-y: auto;
+        padding-right: 12px;
+    }
+    .right-panel {
+        min-width: 0; /* Prevents overflow */
+    }
+
+    .mobile-notice {
+        display: none;
+        padding: 16px;
+        margin: 16px;
+        background: #fff;
+        border-left: 5px solid var(--primary-color-start);
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+    }
+    .mobile-notice h3 { margin: 0 0 8px; font-size: 1rem; }
+    .mobile-notice p { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.6; }
+    .mobile-notice a { color: var(--primary-color-start); font-weight: 600; }
+
+    /* Loading Animation */
+    #results-loading {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        height: 80vh;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border-left-color: var(--primary-color-start);
+        animation: spin 1s ease infinite;
+        margin-bottom: 24px;
+    }
+    #results-loading p {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary-color-start);
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .results-content.hidden { display: none; }
+    .results-content { animation: fadeIn 0.8s ease-in-out; }
+
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    header {
+      padding: 24px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    h1 { margin: 0; color: var(--primary-color-start); font-size: 2rem; font-weight: 700; }
+    .subtitle { color: var(--text-secondary); font-size: 1rem; margin: 4px 0 0; }
+    
+    .control-panel {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .info-box {
+        background: #F8F9FE;
+        border-left: 5px solid var(--primary-color-start);
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    .info-box h3 { margin: 0 0 8px; font-size: 1rem; color: var(--primary-color-start);}
+    .info-box p { margin: 0; line-height: 1.7; }
+    .info-box a { color: var(--primary-color-start); }
+
+    .sample-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .sample-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; background: white; }
+    .sample-card:hover { border-color: var(--primary-color-start); box-shadow: 0 4px 12px rgba(102,126,234,0.2); transform: translateY(-2px); }
+    .sample-card-title { font-weight: 700; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 8px; }
+    .sample-card-desc { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; }
+
+    .assist-modal-content {
+        padding: 24px;
+        max-width: 600px !important;
+    }
+    .assist-step {
+        display: none;
+    }
+    .assist-step.active {
+        display: block;
+    }
+    .assist-step h2 {
+        color: var(--primary-color-start);
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    .assist-step .input-group {
+        margin-bottom: 16px;
+    }
+    #assistChildrenContainer .input-group {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+
+    .accordion-section {
+      background: #FDFDFE;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+    .accordion-header {
+      padding: 16px 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: all 0.2s;
+    }
+    .accordion-header:hover { background: #F8F9FE; }
+    .accordion-header.active { border-bottom: 1px solid var(--border-color); background: #F8F9FE; }
+    .accordion-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 10px; margin: 0; }
+    .accordion-icon { font-size: 1.2rem; transition: transform 0.2s; }
+    .accordion-header.active .accordion-icon { transform: rotate(180deg); }
+    .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .accordion-content.active { max-height: 2000px; }
+    .accordion-body { padding: 20px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-label { font-weight: 500; color: var(--text-secondary); font-size: 0.9rem; }
+    input[type="number"], input[type="text"], select {
+      padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.95rem; transition: all 0.2s; background: white;
+      font-family: var(--font-family-base);
+    }
+    input[type="number"]:focus, input[type="text"]:focus, select:focus { outline: none; border-color: var(--primary-color-start); box-shadow: 0 0 0 3px rgba(109,91,186,.1); }
+    .help-text { color: #888; font-size: 0.85rem; margin: 2px 0 0; }
+
+    .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    button {
+      cursor: pointer; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; font-size: 0.95rem;
+      transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    button:active { transform: translateY(0); }
+    button.primary { background: linear-gradient(135deg, var(--primary-color-start) 0%, var(--primary-color-end) 100%); color: white; grid-column: 1 / -1; }
+    button.secondary { background: #F0F2F5; color: var(--text-primary); }
+    button.assist-btn { border: 1px solid var(--primary-color-start); color: var(--primary-color-start); background: #fff; grid-column: 1 / -1; margin-top: 12px; }
+
+    button.asset-btn, .plan-btn, .housing-btn, .education-btn, .income-btn, .family-btn, .spouse-income-btn, .pension-btn {
+        background: #F8F9FE; border: 1px solid var(--border-color); color: var(--text-primary); width: 100%;
+    }
+    button.save-btn { background: #34D399; color: white; }
+    button.load-btn { background: #FBBF24; color: white; }
+    button.print-btn { background: #60A5FA; color: white; }
+
+    .card {
+      background: var(--card-bg); backdrop-filter: blur(10px); border-radius: 20px; padding: 24px;
+      box-shadow: var(--shadow-md); margin-bottom: 24px;
+    }
+    .card-title { margin: 0 0 20px; color: var(--text-primary); font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    
+    .chart-tools { display:flex; gap: 12px; align-items:center; margin-bottom: 16px; flex-wrap: wrap; }
+    .chart-note { color: var(--text-secondary); font-size:0.85rem; flex-basis: 100%; margin-top: -8px;}
+    .chart-wrap { position: relative; min-width: 1000px; }
+    canvas { width: 100% !important; height: 500px !important; }
+
+    .table-scroll-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: 12px; }
+    #tableWrapper, #incomeTableWrapper { max-height: 500px; overflow-y: auto; min-width: 1800px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th {
+      position: sticky; top: 0; background: linear-gradient(135deg, var(--primary-color-start) 0%, var(--primary-color-end) 100%);
+      color: white; padding: 14px 10px; font-weight: 600; z-index: 10; white-space: nowrap; font-size: 0.85rem;
+    }
+    td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); text-align: right; }
+    tbody tr:hover { background: #F8F9FE; }
+    td:first-child { font-weight: 600; color: var(--primary-color-start); text-align: center; }
+    tbody tr.neg { background: #FFF1F2; }
+    th.age-col, td.age-col { background-color: #F8F9FE; text-align: center; font-weight: 600;}
+
+    #riskResult {
+      padding: 20px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #fbbf24;
+      border-radius: 16px; white-space: pre-line; font-weight: 500; line-height: 1.7;
+    }
+    #riskResult.positive { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #10b981; }
+
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; z-index: 2000; padding: 20px; overflow-y: auto;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: white; padding: 24px; border-radius: 16px; width: 100%; max-width: 1100px; max-height: 95vh;
+      overflow: auto; -webkit-overflow-scrolling: touch;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.25s ease-out; display:flex; flex-direction: column; gap: 12px;
+    }
+    .modal-header { display:flex; align-items:center; justify-content: space-between; gap: 8px; }
+    .modal-title { margin: 0; color:#1f2937; font-weight:700; font-size: 1.4rem; }
+    .modal-body { overflow:auto; }
+    .modal-body p, .modal-body li { line-height: 1.7; color: var(--text-secondary); }
+    .modal-body ul { padding-left: 20px; }
+    @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+    footer { text-align: center; color: #aaa; margin: 24px 0 8px; font-size: 0.85rem; }
+
+    /* --- Gantt Chart Timeline Styles --- */
+    #lifePlanTimeline {
+      overflow-x: auto;
+      padding: 1em;
+      background: #f8f9fe;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      -webkit-overflow-scrolling: touch;
+    }
+    .gantt-chart-container {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      width: 2500px; 
+      position: relative;
+      font-size: 0.9rem;
+    }
+    .gantt-header {
+      grid-column: 2 / -1;
+      display: flex;
+      position: sticky;
+      top: 0;
+      background: #f8f9fe;
+      z-index: 10;
+      border-bottom: 2px solid var(--border-color);
+    }
+    .gantt-year-marker {
+      flex: 0 0 50px;
+      text-align: center;
+      padding: 8px 0;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      border-right: 1px solid #e5e7eb;
+    }
+    .gantt-category-labels {
+      grid-column: 1 / 2;
+      padding-top: 35px;
+    }
+    .gantt-category-label {
+      font-weight: 600;
+      padding: 12px;
+      height: 50px; /* 縦幅を拡大 */
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .gantt-rows {
+      grid-column: 2 / -1;
+      padding-top: 35px;
+      position: relative;
+    }
+    .gantt-row {
+      height: 50px; /* 縦幅を拡大 */
+      border-bottom: 1px solid #e5e7eb;
+      position: relative;
+    }
+    .gantt-event {
+      position: absolute;
+      top: 5px;
+      height: 40px; /* 縦幅を拡大 */
+      background-color: var(--primary-color-start);
+      color: white;
+      border-radius: 6px;
+      padding: 4px 8px; /* パディング調整 */
+      display: flex;
+      align-items: center;
+      gap: 4px; /* アイコンとテキストの間隔 */
+      font-size: 0.8em;
+      line-height: 1.3; /* 行間 */
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: normal; /* テキストの折り返しを許可 */
+      overflow: hidden;
+    }
+    .gantt-event:hover {
+        background-color: var(--primary-color-end);
+        transform: translateY(-1px);
+    }
+    .gantt-event[data-category="本人"] { background-color: #60a5fa; }
+    .gantt-event[data-category="配偶者"] { background-color: #f472b6; }
+    .gantt-event[data-category^="子ども-"] { background-color: #34d399; }
+    .gantt-event[data-category="ライフ"] { background-color: #fbbf24; }
+    .gantt-event[data-category="住居"] { background-color: #a78bfa; }
+    .gantt-event[data-category="資産"] { background-color: #2dd4bf; }
+
+
+/* --- NEW: Initial Mode Selection Modal --- */
+#mode-selection-modal {
+    display: flex;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+}
+.mode-selection-content {
+    background-color: #fff;
+    margin: auto;
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 600px;
+}
+.mode-selection-content h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #002B5B;
+    margin: 0 0 24px;
+}
+.mode-selection-buttons-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.mode-selection-button {
+    background-color: #005A9B;
+    color: white;
+    padding: 18px 30px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 600;
+    width: 240px;
+    transition: all 0.2s ease;
+}
+.mode-selection-button:hover {
+    background-color: #003F6B;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,90,155,0.3);
+}
+.mode-selection-sample-button {
+    background-color: transparent;
+    color: #005A9B;
+    border: 2px solid #005A9B;
+    margin-top: 20px;
+    font-size: 1rem;
+    width: auto;
+    padding: 12px 24px;
+}
+.mode-selection-sample-button:hover {
+    background-color: #E6F0F6;
+}
+
+/* --- Media Query --- */
+@media (max-width: 768px) {
+  .mode-selection-buttons-container {
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
+  }
+  .mode-selection-button { width: 100%; margin: 0;}
+}
+    /* --- NEW: Tab Styles --- */
+    .tab-container {
+      width: 100%;
+      margin-top: 24px;
+    }
+    .tab-buttons {
+        display: flex;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: -2px; /* Overlap with card border */
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .tab-button {
+        padding: 12px 24px;
+        cursor: pointer;
+        border: none;
+        background-color: transparent;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 600;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    .tab-button:hover {
+        color: var(--primary-color-start);
+    }
+    .tab-button.active {
+        color: var(--primary-color-start);
+        border-bottom-color: var(--primary-color-start);
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.5s;
+    }
+
+    @media (max-width: 1200px) {
+        .main-container {
+            grid-template-columns: 1fr;
+        }
+        .left-panel {
+            position: static;
+            height: auto;
+            padding-right: 0;
+        }
+        .mobile-notice {
+            display: block;
+        }
+    }
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .sample-grid { grid-template-columns: 1fr; }
+      .mode-selection-button { width: 100%; margin: 8px 0;}
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="mode-selection-modal" class="modal show">
+    <div class="mode-selection-content">
+        <h2>モード選択</h2>
+        <div class="mode-selection-buttons-container">
+            <button id="easy-sim-btn" class="mode-selection-button">かんたん<br>シミュレーション</button>
+            <button id="detailed-sim-btn" class="mode-selection-button">詳細<br>シミュレーション</button>
+        </div>
+        <button id="sample-data-mode-btn" class="mode-selection-sample-button">【お試し】サンプルデータを使う</button>
+    </div>
+</div>
+
+<div class="mobile-notice">
+    <h3>📱 スマートフォンでご利用の方へ</h3>
+    <p>
+        現在のバージョンはPC・タブレットでのご利用に最適化されています。スマートフォンからは、旧バージョンまたは使い方ガイドをご覧ください。
+    </p>
+    <p>
+        <a href="index_2.0.html">➡️ 旧バージョン(v2.0)を利用する</a><br>
+        <a href="index_1.2.html" style="font-size: 0.9em;">➡️ 旧バージョン(v1.2)を利用する</a><br>
+        <a href="tutorial.html" style="font-size: 0.9em;">➡️ 使い方ガイドを見る</a>
+    </p>
+</div>
+
+  <div class="main-container">
+    <div class="left-panel">
+        <header>
+            <h1>🧭 Mirai-Compass <span style="font-size: 1rem; color: #94a3b8;">ver2.40</span></h1>
+            <p class="subtitle">A modern tool for your financial future.</p>
+        </header>
+
+        <div class="info-box">
+            <h3>ようこそ Mirai-Compass へ</h3>
+            <p>
+                本ツールは先行リリース版であり、機能は順次追加・改修されます。そのため動作が不安定になる場合がございますが、何卒ご了承ください。<br>
+                <strong>PCまたはタブレットでのご利用を推奨します。</strong><br>
+                ▼公式HPはこちら▼<br>
+                <a href="https://mirai-compass.jimdosite.com/" target="_blank">https://mirai-compass.jimdosite.com/</a>
+            </p>
+        </div>
+
+        <div class="control-panel">
+            <ul id="notificationArea" style="padding: 0; list-style: none; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;"></ul>
+            <button type="button" id="runSimBtn" class="primary">📊 シミュレーション実行</button>
+            <div class="button-group">
+                <button type="button" id="saveBtn" class="save-btn">💾 保存</button>
+                <button type="button" id="loadBtn" class="load-btn">📂 読込</button>
+                <button type="button" id="assetAnalysisBtn" class="secondary" disabled>💹 プラン健康診断</button>
+                <button type="button" id="insuranceBtn" class="secondary" disabled>🛡️ 必要保障額</button>
+                <button type="button" id="printBtn" class="print-btn">🖨️ 印刷</button>
+            </div>
+            </div>
+        
+        <form id="lifePlanForm" class="no-print">
+            <div class="accordion-section">
+                <div class="accordion-header" data-section="sample">
+                    <h3 class="accordion-title">📝 サンプルデータから始める</h3><span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                      <div class="sample-grid">
+                        <div class="sample-card" data-sample="single">
+                          <div class="sample-card-title">🙋 独身 新入社員</div>
+                          <div class="sample-card-desc">年収400万円・25歳・賃貸暮らし</div>
+                        </div>
+                        <div class="sample-card" data-sample="family">
+                          <div class="sample-card-title">👨‍👩‍👧‍👦 30歳夫婦（子2人）</div>
+                          <div class="sample-card-desc">子供2歳・0歳・持ち家ローン開始</div>
+                        </div>
+                        <div class="sample-card" data-sample="senior-couple">
+                          <div class="sample-card-title">👴👵 シニア夫婦</div>
+                          <div class="sample-card-desc">60歳・定年間近・年金準備</div>
+                        </div>
+                        <div class="sample-card" data-sample="senior-single">
+                          <div class="sample-card-title">🧓 シニア単身</div>
+                          <div class="sample-card-desc">65歳・年金生活スタート</div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section">
+                <div class="accordion-header active" data-section="basic">
+                    <h3 class="accordion-title">👤 基本情報</h3><span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content active">
+                    <div class="accordion-body">
+                        <div class="form-grid">
+                            <div class="input-group"><label class="input-label">お名前（本人）</label><input type="text" name="selfName" value="太郎" id="selfNameInput"></div>
+                            <div class="input-group"><label class="input-label">現在の年齢</label><input type="number" name="selfAge" value="30" min="18" max="100" id="selfAgeInput"></div>
+                        </div>
+                        <div class="input-group" style="margin-top: 16px;"><label class="input-label">現在の現預金残高（万円）</label><input type="number" name="initialCash" value="200" min="0"></div>
+                        <div style="margin-top: 16px;"><button type="button" id="openFamilyBtn" class="family-btn">🧩 家族構成を編集</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section">
+                <div class="accordion-header" data-section="income">
+                    <h3 class="accordion-title">💼 収入設定</h3><span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <h4 style="margin: 0 0 12px; color: #334155;">本人の収入</h4>
+                        <div class="form-grid">
+                            <div class="input-group"><label class="input-label">初年度年収（万円）</label><input type="number" name="incomeStart" value="600" min="0" id="incomeStartInput"></div>
+                            <div class="input-group"><label class="input-label">年収上昇率（％）</label><input type="number" name="incomeGrowth" value="2" step="0.1" min="-10" max="20"></div>
+                            <div class="input-group"><label class="input-label">退職年齢</label><input type="number" name="retireAge" value="65" min="50" max="80"></div>
+                            <div class="input-group"><label class="input-label">退職金（万円）</label><input type="number" name="retirementBonus" value="2000" min="0"></div>
+                        </div>
+                        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" id="openIncomeBtn" class="income-btn">✍️ 本人収入カスタム</button>
+                            <button type="button" id="openSpouseIncomeSettingsBtn" class="spouse-income-btn">💼 配偶者の収入</button>
+                            <button type="button" id="openPensionBtn" class="pension-btn">📈 年金詳細</button>
+                            <button type="button" id="openDcBtn" class="pension-btn">💰 確定拠出年金(DC)/iDeCo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section">
+                <div class="accordion-header" data-section="living">
+                    <h3 class="accordion-title">🏠 生活費・住居費</h3><span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="form-grid">
+                            <div class="input-group"><label class="input-label">毎月の生活費（万円）</label><input type="number" name="livingCost" value="30" min="0"><p class="help-text">食費・光熱費など</p></div>
+                            <div class="input-group"><label class="input-label">物価上昇率（％）</label><input type="number" name="inflation" value="2" step="0.1" min="-5" max="10"></div>
+                        </div>
+                        <div style="margin-top: 16px;"><button type="button" id="openHousingBtn" class="housing-btn">🏡 住宅（賃貸/持家）を設定</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section">
+                <div class="accordion-header" data-section="life">
+                    <h3 class="accordion-title">🎉 ライフイベント</h3><span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" id="openEducationBtn" class="education-btn">📚 教育資金</button>
+                        <button type="button" id="openPlanBtn" class="plan-btn">🚗 将来プラン</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section">
+                <div class="accordion-header" data-section="asset">
+                    <h3 class="accordion-title">📈 金融資産・投資</h3><span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <button type="button" id="openAssetBtn" class="asset-btn">⚙️ 金融資産を設定する</button>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" name="assetConfig" id="assetConfig" value="[]">
+            <input type="hidden" name="housingConfig" id="housingConfig" value="[]">
+            <input type="hidden" name="planConfig" id="planConfig" value="[]">
+            <input type="hidden" name="educationConfig" id="educationConfig" value="[]">
+            <input type="hidden" name="customIncomeConfig" id="customIncomeConfig" value="[]">
+            <input type="hidden" name="customIncomeConfigSpouse" id="customIncomeConfigSpouse" value="[]">
+            <input type="hidden" name="familyConfig" id="familyConfig" value='{"self":{"name":"太郎","age":30},"spouse":{"name":"","age":0},"selfParents":[{"name":"","age":0},{"name":"","age":0}],"spouseParents":[{"name":"","age":0},{"name":"","age":0}],"children":[]}'>
+            <input type="hidden" name="spouseIncomeSettings" id="spouseIncomeSettings" value='{"incomeStart":0,"incomeGrowthPct":0,"retireAge":65,"retirementBonus":0}'>
+            <input type="hidden" name="pensionConfig" id="pensionConfig" value='{"selfAvgMonthly":30, "spouseAvgMonthly":0}'>
+            <input type="hidden" name="dcConfig" id="dcConfig" value='{"corp":0, "indiv":0, "rate":3, "initial": 0}'>
+        </form>
+        
+        <footer>
+            Copyright© 2025 Mirai-Compass All right reserved. | <a href="index_1.2.html">Ver1.20(旧版)はこちら</a>
+        </footer>
+
+    </div>
+
+    <div class="right-panel">
+        <div id="results-loading">
+            <div class="spinner"></div>
+            <p>Analyzing your future...</p>
+        </div>
+        
+        <div id="results-content" class="results-content hidden">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="tab-chart">収支・資産グラフ</button>
+                <button class="tab-button" data-tab="tab-summary">プラン健康診断・サマリーレポート</button>
+                <button class="tab-button" data-tab="tab-table">年度別収支表</button>
+                <button class="tab-button" data-tab="tab-timeline">人生プラン年表</button>
+            </div>
+
+            <div id="tab-summary" class="tab-content">
+                <div class="card print-section">
+                    <h2 class="card-title">📈 プラン健康診断</h2>
+                    
+                    <div id="riskResult" style="display:none;"></div>
+                    
+                    <p id="summary-placeholder" style="text-align:center; padding:40px; color:#94a3b8;">
+                        シミュレーション実行後に分析サマリーが表示されます。<br>
+                        左のパネルで「資産分析」ボタンを押すと、「プラン健康診断」がここに表示されます。
+                    </p>
+
+                    <div style="border-top: 1px solid var(--border-color); margin-top: 24px; padding-top: 24px; text-align: center;">
+                        <p style="color: var(--text-secondary); margin: 0 0 12px;">さらに詳細な分析（確率予測）を実行しますか？</p>
+                        
+                        <button type="button" id="runAdvancedAnalysisMainBtn" class="secondary">
+                            💹 高度な資産分析 (モンテカルロ) を実行
+                        </button>
+                        
+                        <div id="advancedRiskResultMain" style="white-space: pre-line; line-height: 1.7; background: #f8f9fe; border-radius: 8px; padding: 16px; margin-top: 16px; display: none; text-align: left;">
+                            </div>
+                    </div>
+                    </div>
+                <div class="card">
+                    <h2 class="card-title">💵 収入推移表</h2>
+                    <div class="table-scroll-wrapper">
+                        <div id="incomeTableWrapper"><table id="incomeTable"><thead><tr><th>年齢</th><th>給与（本人）</th><th>給与（配偶者）</th><th>こども関連手当</th><th>年金収入</th><th>退職金</th><th>資産受取</th><th>総収入</th></tr></thead><tbody><tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">シミュレーション実行後に表示されます</td></tr></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-chart" class="tab-content active">
+                <div class="card print-section" id="chartCard">
+                    <h2 class="card-title">📊 収入・支出・資産推移グラフ</h2>
+                    <div class="chart-tools no-print">
+                        <button type="button" id="zoomInBtn" class="secondary">+</button>
+                        <button type="button" id="zoomOutBtn" class="secondary">-</button>
+                        <button type="button" id="resetZoomBtn" class="secondary">🔍 ズームリセット</button>
+                        <span class="chart-note">グラフ上でドラッグしてスクロール、マウスホイールやピンチ操作で拡大縮小できます。</span>
+                    </div>
+                    <div class="table-scroll-wrapper">
+                        <div class="chart-wrap"><canvas id="lifePlanChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab-table" class="tab-content">
+                <div class="card print-section" id="resultCard">
+                    <h2 class="card-title">📋 年度別収支表</h2>
+                    <div class="table-scroll-wrapper">
+                        <div id="tableWrapper"><table id="resultTable"><thead></thead><tbody><tr><td colspan="100" style="text-align:center; padding:40px; color:#94a3b8;">シミュレーション実行後に表示されます</td></tr></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-timeline" class="tab-content">
+                <div class="card print-section" id="timelineCard">
+                    <h2 class="card-title">📅 人生プラン年表</h2>
+                    <div id="lifePlanTimeline"><p style="text-align:center; padding:40px; color:#94a3b8;">シミュレーション実行後に表示されます</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".json,text/plain" style="display: none;">
+
+  <div id="assistModal" class="modal">
+    <div class="modal-content assist-modal-content">
+      <form id="assistForm">
+        <div id="assistStep1" class="assist-step active">
+          <h2>かんたんシミュレーション (1/4)</h2>
+          <div class="input-group">
+            <label class="input-label">あなたの年齢</label>
+            <input type="number" id="assistSelfAge" value="30" min="18" max="100" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">現在の貯金額（預貯金）</label>
+            <input type="number" id="assistInitialCash" value="200" min="0" required>
+            <p class="help-text">万円単位で入力してください。</p>
+          </div>
+          <div class="input-group">
+            <label class="input-label">家族構成</label>
+            <select id="assistFamilyStatus">
+              <option value="single">独身</option>
+              <option value="couple" selected>夫婦</option>
+            </select>
+          </div>
+          <div class="modal-buttons" style="justify-content: flex-end;">
+            <button type="button" class="primary" onclick="goToAssistStep(2)">次へ</button>
+          </div>
+        </div>
+        <div id="assistStep2" class="assist-step">
+          <h2>かんたんシミュレーション (2/4)</h2>
+          <div id="assistSpouseSection">
+            <div class="input-group">
+              <label class="input-label">配偶者の年齢</label>
+              <input type="number" id="assistSpouseAge" value="30" min="18" max="100">
+            </div>
+            <div class="input-group">
+              <label class="input-label">配偶者の働き方</label>
+              <select id="assistSpouseWork">
+                <option value="none">専業主婦/主夫</option>
+                <option value="part_time" selected>パート/アルバイト</option>
+                <option value="full_time">会社員/公務員</option>
+              </select>
+            </div>
+            <div class="input-group" id="assistSpouseIncomeSection" style="display: none;">
+                <label class="input-label">配偶者の税込年収</label>
+                <select id="assistSpouseIncome">
+                  <option value="200">200万円</option>
+                  <option value="300" selected>300万円</option>
+                  <option value="400">400万円</option>
+                  <option value="500">500万円</option>
+                  <option value="700">700万円</option>
+                  <option value="1000">1000万円</option>
+                </select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="input-label">お子様の人数</label>
+            <select id="assistChildrenCount">
+              <option value="0">0人</option>
+              <option value="1">1人</option>
+              <option value="2" selected>2人</option>
+              <option value="3">3人</option>
+            </select>
+          </div>
+          <div id="assistChildrenContainer"></div>
+          <div class="modal-buttons">
+            <button type="button" class="secondary" onclick="goToAssistStep(1)">戻る</button>
+            <button type="button" class="primary" onclick="goToAssistStep(3)">次へ</button>
+          </div>
+        </div>
+        <div id="assistStep3" class="assist-step">
+          <h2>かんたんシミュレーション (3/4)</h2>
+          <div class="input-group">
+            <label class="input-label">あなたの税込年収</label>
+            <select id="assistIncome">
+              <option value="200">200万円</option>
+              <option value="300">300万円</option>
+              <option value="400">400万円</option>
+              <option value="500" selected>500万円</option>
+              <option value="700">700万円</option>
+              <option value="1000">1000万円</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label">今後の給与の変動</label>
+            <select id="assistIncomeGrowth">
+              <option value="flat">あまり変わらない (年0.5%)</option>
+              <option value="moderate" selected>少しずつ増える (年2%)</option>
+              <option value="high">大きく増える (年4%)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label">毎月の生活費（家賃・住宅ローンを除く）</label>
+            <select id="assistLivingCost">
+              <option value="5">5万円</option>
+              <option value="10">10万円</option>
+              <option value="15">15万円</option>
+              <option value="20">20万円</option>
+              <option value="25" selected>25万円</option>
+              <option value="30">30万円</option>
+            </select>
+          </div>
+          <div class="modal-buttons">
+            <button type="button" class="secondary" onclick="goToAssistStep(2)">戻る</button>
+            <button type="button" class="primary" onclick="goToAssistStep(4)">次へ</button>
+          </div>
+        </div>
+        <div id="assistStep4" class="assist-step">
+            <h2>かんたんシミュレーション (4/4)</h2>
+            <div class="input-group">
+                <label class="input-label">現在のお住まい</label>
+                <select id="assistHousingType">
+                    <option value="rent">賃貸</option>
+                    <option value="loan" selected>持ち家（ローン返済中）</option>
+                    <option value="owned">持ち家（ローン完済）</option>
+                </select>
+            </div>
+            <div class="input-group" id="assistHousingCostGroup">
+                <label class="input-label" id="assistHousingCostLabel">毎月の住宅ローン返済額</label>
+                <input type="number" id="assistHousingCost" value="10" min="0">
+                <p class="help-text">万円単位で入力してください。</p>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="secondary" onclick="goToAssistStep(3)">戻る</button>
+                <button type="button" id="finishAssistBtn" class="primary">設定を反映してシミュレーションへ</button>
+            </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="planModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">📅 将来プラン（定期支出）</h2>
+      <p style="color:#64748b; margin-bottom:16px; font-size:0.9rem;">車の購入、旅行、結婚式、リフォームなど、将来の定期的な支出を設定できます</p>
+      <div style="overflow-x:auto;">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>項目名</th>
+              <th>支出年齢</th>
+              <th>金額（万円）</th>
+              <th>繰り返し</th>
+              <th>終了年齢</th>
+            </tr>
+          </thead>
+          <tbody id="planTableBody">
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-buttons">
+        <div>
+          <button type="button" id="addPlanRowBtn" class="secondary">＋ 行を追加</button>
+        </div>
+        <div>
+          <button type="button" id="applyPlanBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closePlanBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+    
+  <div id="assetAnalysisIntroModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <h2 class="modal-title">💹 資産分析について</h2>
+        <div class="modal-body">
+            <p>現在のライフプランに基づき、将来の資産がマイナスになるリスクがないかを分析します。</p>
+            <ul>
+                <li>シミュレーション期間（100歳まで）を通して、現預金残高が一度でもマイナスになるかをチェックします。</li>
+                <li>マイナスになる場合は、その年齢と最大不足額をお知らせします。</li>
+                <li>簡単な改善策（生活費の削減や追加投資など）を自動で提案します。</li>
+            </ul>
+            <p><strong>注意：</strong>提案はあくまで簡易的なものです。詳細な改善は、専門家にご相談ください。</p>
+        </div>
+        <div class="modal-buttons" style="justify-content: flex-end;">
+            <button type="button" id="runAssetAnalysisBtn" class="primary">分析を実行</button>
+            <button type="button" class="secondary" onclick="document.getElementById('assetAnalysisIntroModal').classList.remove('show')">閉じる</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="insuranceIntroModal" class="modal">
+      <div class="modal-content" style="max-width: 700px;">
+          <h2 class="modal-title">🛡️ 万一時必要保障額の試算について</h2>
+          <div class="modal-body">
+              <p>シミュレーション対象者（本人）に万一の事態（死亡）が発生した場合、遺された家族の生活にいくら不足が生じるかを試算します。これは、生命保険で備えるべき「必要保障額」の目安となります。</p>
+              <p>以下の条件で計算します：</p>
+              <ul>
+                  <li><b>遺族の収入：</b>配偶者の給与、児童手当、遺族年金（概算）を考慮します。</li>
+                  <li><b>遺族の支出：</b>生活費は元の計画の一定割合（デフォルト70%）に減少すると仮定。教育費や住居費は計画通り発生します。</li>
+                  <li><b>計算期間：</b>万一の発生時から、一番下のお子様が独立する年齢（22歳）までを基本とします。</li>
+              </ul>
+              <p>分析を開始する前に、以下の設定を確認してください。</p>
+          </div>
+          <div class="form-grid" style="margin-bottom:16px;">
+              <div class="input-group">
+                  <label class="input-label">遺族生活費割合（％）</label>
+                  <input type="number" id="survivorRatioInput" min="0" max="100" value="70" step="1">
+                  <p class="help-text">万一発生以降、生活費をこの割合に低減して試算（初期70%）。</p>
+              </div>
+              <div class="input-group">
+                  <label class="input-label">厚生年金加入期間（見込み, 年）</label>
+                  <input type="number" id="pensionTermInput" min="0" max="50" value="10">
+                  <p class="help-text">万一発生時点での厚生年金加入年数です。遺族厚生年金の計算に使用します。</p>
+              </div>
+          </div>
+          <div class="input-group" style="margin-bottom: 16px;">
+              <label style="display:flex; flex-direction:row; align-items:center; gap:8px; cursor:pointer;">
+                  <input type="checkbox" id="includeAssetsInInsuranceCalc" checked>
+                  計算時にその時点の資産残高（現預金・金融資産）を考慮する
+              </label>
+              <p class="help-text">チェックを外すと、資産がないものとして必要な保障額を計算します。</p>
+          </div>
+          <div class="modal-buttons" style="justify-content: flex-end;">
+              <button type="button" id="runInsuranceBtn" class="primary">▶ 年齢別リスクを計算</button>
+              <button type="button" class="secondary" onclick="document.getElementById('insuranceIntroModal').classList.remove('show')">閉じる</button>
+          </div>
+      </div>
+  </div>
+  
+  <div id="insuranceModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">🛡️ 万一時必要保障額の試算結果</h2>
+      <div id="insuranceResult" style="margin-top:12px;" class="print-section"></div>
+      
+      <div class="insurance-options no-print" style="margin-top: 16px; padding: 12px; background: #f8f9fe; border-radius: 8px;">
+          <h4 style="margin:0 0 12px;">保険で備える場合のイメージ</h4>
+          <div style="display: flex; flex-direction:column; gap: 8px;">
+              <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+                  <input type="checkbox" class="insurance-toggle" data-type="term"> ⬜️ 定期保険 <span style="font-size:0.8em; color:#64748b;">（一定期間の大きな保障。保険料は割安）</span>
+              </label>
+              <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+                  <input type="checkbox" class="insurance-toggle" data-type="income"> ◢ 収入保障保険 <span style="font-size:0.8em; color:#64748b;">（必要額に合わせて保障が逓減。合理的で保険料も割安）</span>
+              </label>
+              <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+                  <input type="checkbox" class="insurance-toggle" data-type="whole"> 🟦 終身保険 <span style="font-size:0.8em; color:#64748b;">（一生涯の保障。保険料は割高だが貯蓄性あり）</span>
+              </label>
+          </div>
+          <p style="font-size:0.8rem; color:#64748b; margin-top:8px;">※チェックを入れると、最大保障額をカバーする一般的な保険のイメージがグラフに重なります。</p>
+      </div>
+      
+      <div class="chart-wrap" id="insuranceChartContainer" style="display:none; margin-top: 16px; min-width: 0;">
+          <canvas id="insuranceChart" height="400"></canvas>
+      </div>
+       <div class="modal-buttons" style="justify-content: flex-end;">
+          <button type="button" id="closeInsuranceBtn" class="secondary">✕ 閉じる</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="assetModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">📈 金融資産設定（最大5商品）</h2>
+      <p style="color:#64748b; margin-bottom:16px; font-size:0.9rem;">金融商品の名称は任意です。金額が入力されていればシミュレーションに反映されます。</p>
+      <div style="overflow-x: auto;">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>商品名（任意）</th>
+              <th>現在残高<br>（万円）</th>
+              <th>積立開始<br>年齢</th>
+              <th>積立終了<br>年齢</th>
+              <th>年間積立額<br>（万円）</th>
+              <th>想定利回り<br>（％）</th>
+              <th>リスク(標準偏差)<br>（％）</th> <th>運用終了後</th>
+              <th>年額(万円)</th>
+              <th>利回り(受取時)<br>(%)</th>
+            </tr>
+          </thead>
+          <tbody id="assetTableBody">
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-buttons">
+        <div></div>
+        <div>
+          <button type="button" id="applyAssetBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeAssetBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="housingModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">🏠 住宅（賃貸/持家）設定</h2>
+      <p style="color:#64748b; margin-bottom:12px; font-size:0.9rem;">名称は任意です。金額が入力されていればシミュレーションに反映されます。</p>
+      <div style="overflow-x:auto;">
+        <table class="modal-table" id="housingTable">
+          <thead>
+            <tr>
+              <th>名称（任意）</th>
+              <th>種類</th>
+              <th>居住開始</th>
+              <th>居住終了</th>
+              <th class="loan-only">返済開始</th>
+              <th class="loan-only">返済終了</th>
+              <th>家賃(月)</th>
+              <th class="loan-only">維持費(月)</th>
+              <th>ローン詳細</th>
+              <th class="loan-only">返済月額(目安)</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="housingTableBody">
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-buttons">
+        <div>
+          <button type="button" id="addHousingRowBtn" class="secondary">＋ 行を追加</button>
+        </div>
+        <div>
+          <button type="button" id="applyHousingBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeHousingBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+      <p style="color:#64748b; font-size:0.85rem; margin-top:8px;">※ ローンは元利均等。返済月額は目安です（ボーナス併用を年額で均し表示）。</p>
+    </div>
+  </div>
+  <div id="loanDetailModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">🏦 ローン詳細設定</h2>
+      <table class="modal-table">
+        <thead>
+          <tr>
+            <th>借入額（万円）</th>
+            <th>金利（％）</th>
+            <th>ボーナス併用（年2回合計, 万円）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="number" id="loanPrincipal" min="0" value="3500"></td>
+            <td><input type="number" id="loanRate" step="0.01" value="1.5"></td>
+            <td><input type="number" id="loanBonusAdd" min="0" step="0.1" value="0"></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="modal-buttons">
+        <div></div>
+        <div>
+          <button type="button" id="applyLoanDetailBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeLoanDetailBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="educationModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">🎓 教育資金設定</h2>
+      <p style="color:#64748b; margin-bottom:16px; font-size:0.9rem;">「家族構成」で入力したお子様が表示されます。各年代の年間教育費を入力してください。</p>
+      <div style="overflow-x:auto;">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>子供の名前</th>
+              <th>年齢/予定</th>
+              <th>小学校<br>（年額万円）</th>
+              <th>中学校<br>（年額万円）</th>
+              <th>高校<br>（年額万円）</th>
+              <th>大学<br>（年額万円）</th>
+              <th>その他<br>（習い事等）</th>
+            </tr>
+          </thead>
+          <tbody id="educationTableBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-buttons">
+        <div></div>
+        <div>
+          <button type="button" id="applyEducationBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeEducationBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="incomeModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">✍️ 収入カスタム編集</h2>
+      <div class="form-grid" style="margin-bottom:8px;">
+        <div class="input-group">
+          <label class="input-label">対象</label>
+          <select id="incomeTarget">
+            <option value="self">本人</option>
+            <option value="spouse">配偶者</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label class="input-label">自動補正</label>
+          <select id="incomeAutoAdjust">
+            <option value="on" selected>オン（控えめ）</option>
+            <option value="off">オフ</option>
+          </select>
+          <p class="help-text">入力済み点から控えめに上昇率を推定して空欄を自動補完します</p>
+        </div>
+        <div class="input-group">
+          <label class="input-label">空欄の扱い</label>
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="incomeEmptyToZero">
+            空欄は0で固定する（自動補正で埋めない）
+          </label>
+        </div>
+      </div>
+      <div style="overflow-x:auto; max-height:60vh; overflow-y:auto;">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>年齢</th>
+              <th>給与（万円/年）</th>
+            </tr>
+          </thead>
+          <tbody id="incomeCustomBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-buttons">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" id="detectAndFillBtn" class="secondary">📈 補正を再計算</button>
+          <button type="button" id="clearIncomeCustomBtn" class="secondary">🧹 全クリア</button>
+        </div>
+        <div>
+          <button type="button" id="applyIncomeBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeIncomeBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="spouseIncomeModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">💼 配偶者の収入設定</h2>
+      <div class="form-grid">
+        <div class="input-group">
+          <label class="input-label">初年度年収（万円）</label>
+          <input type="number" id="spIncomeStart" value="0" min="0">
+        </div>
+        <div class="input-group">
+          <label class="input-label">年収上昇率（％）</label>
+          <input type="number" id="spIncomeGrowth" value="0" step="0.1" min="-10" max="20">
+        </div>
+        <div class="input-group">
+          <label class="input-label">退職年齢</label>
+          <input type="number" id="spRetireAge" value="65" min="50" max="80">
+        </div>
+        <div class="input-group">
+          <label class="input-label">退職金（万円）</label>
+          <input type="number" id="spRetirementBonus" value="0" min="0">
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="openSpouseCustomFromSettings" class="income-btn">✍️ カスタム編集</button>
+        <div>
+          <button type="button" id="applySpouseIncomeSettingsBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeSpouseIncomeSettingsBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="pensionModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">📈 年金詳細設定</h2>
+      <p style="color:#64748b; margin-bottom:16px; font-size:0.9rem;">
+        現役時代の平均標準報酬月額（月収の平均）を入力すると、より正確な年金額が計算されます。<br>
+        不明な場合は、日本人全体の平均に近い30〜40万円等で試算してみてください。
+      </p>
+      <div class="form-grid">
+        <div class="input-group">
+          <label class="input-label">本人：平均標準報酬月額（万円）</label>
+          <input type="number" id="selfAvgMonthlyPension" min="0" value="30">
+          <p class="help-text">厚生年金部分の計算に使用します。「ねんきん定期便」などで確認できます。</p>
+        </div>
+        <div class="input-group">
+          <label class="input-label">配偶者：平均標準報酬月額（万円）</label>
+          <input type="number" id="spouseAvgMonthlyPension" min="0" value="0">
+          <p class="help-text">配偶者の年金を計算する場合に入力します。</p>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <div></div>
+        <div>
+          <button type="button" id="applyPensionBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closePensionBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="dcModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <h2 class="modal-title">💰 確定拠出年金(DC)/iDeCo 設定</h2>
+      <p style="color:#64748b; margin-bottom:16px; font-size:0.9rem;">
+        確定拠出年金やiDeCoの掛金と運用利回りを設定します。個人掛金は支出として計上され、退職時に一時金で受け取る想定で計算します。
+      </p>
+      <div class="form-grid">
+        <div class="input-group">
+          <label class="input-label">毎月の企業掛金（円）</label>
+          <input type="number" id="dcCorpContribution" min="0" value="0" step="1000">
+          <p class="help-text">企業が拠出する金額です。家計の支出には影響しません。</p>
+        </div>
+        <div class="input-group">
+          <label class="input-label">毎月の個人掛金（円）</label>
+          <input type="number" id="dcIndivContribution" min="0" value="0" step="1000">
+          <p class="help-text">ご自身の給与から天引き・拠出する金額です。支出として計上されます。</p>
+        </div>
+        <div class="input-group">
+          <label class="input-label">想定運用利回り（年率％）</label>
+          <input type="number" id="dcReturnRate" min="0" value="3" step="0.1">
+        </div>
+         <div class="input-group">
+          <label class="input-label">現在の評価額（万円）</label>
+          <input type="number" id="dcInitialBalance" min="0" value="0">
+        </div>
+      </div>
+      <div class="modal-buttons" style="margin-top: 16px;">
+        <div></div>
+        <div>
+          <button type="button" id="applyDcBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeDcBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="familyModal" class="modal">
+    <div class="modal-content">
+      <h2 class="modal-title">🧩 家族構成を編集</h2>
+      <div class="family-grid" id="familyGrid">
+        <div class="person-card" data-role="self">
+          <div class="person-title">本人</div>
+          <div class="person-summary" data-summary>名前: 太郎 / 年齢: 30</div>
+        </div>
+        <div class="person-card" data-role="spouse">
+          <div class="person-title">配偶者</div>
+          <div class="person-summary" data-summary>名前:  / 年齢: </div>
+        </div>
+        <div class="person-card" data-role="selfFather">
+          <div class="person-title">父（本人）</div>
+          <div class="person-summary" data-summary>名前:  / 年齢: </div>
+        </div>
+        <div class="person-card" data-role="selfMother">
+          <div class="person-title">母（本人）</div>
+          <div class="person-summary" data-summary>名前:  / 年齢: </div>
+        </div>
+        <div class="person-card" data-role="spouseFather">
+          <div class="person-title">父（配偶者）</div>
+          <div class="person-summary" data-summary>名前:  / 年齢: </div>
+        </div>
+        <div class="person-card" data-role="spouseMother">
+          <div class="person-title">母（配偶者）</div>
+          <div class="person-summary" data-summary>名前:  / 年齢: </div>
+        </div>
+      </div>
+
+      <div id="personDetail">
+        <h3 id="personDetailTitle" style="margin:8px 0; color:#334155;">詳細編集</h3>
+        <div class="form-grid">
+          <div class="input-group">
+            <label class="input-label">名前</label>
+            <input type="text" id="personNameInput" value="">
+          </div>
+          <div class="input-group">
+            <label class="input-label">現在の年齢</label>
+            <input type="number" id="personAgeInput" value="0" min="0" max="120">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <h3 style="margin:8px 0; color:#334155;">子ども</h3>
+        <div style="overflow-x:auto;">
+          <table class="modal-table">
+            <thead>
+              <tr>
+                <th>名前</th>
+                <th colspan="2">年齢/誕生予定</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="childrenTableBody"></tbody>
+          </table>
+        </div>
+        <button type="button" id="addChildBtn" class="secondary">＋ 子どもを追加</button>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:16px;">
+        <div></div>
+        <div>
+          <button type="button" id="applyFamilyBtn" class="primary">✓ 適用</button>
+          <button type="button" id="closeFamilyBtn" class="secondary">✕ 閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<div id="advancedAnalysisModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2 class="modal-title">📈 高度な資産分析 (モンテカルロ)</h2>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748b; margin-bottom:16px; font-size:0.9rem;">
+          シミュレーション結果に基づき、運用利回りの変動リスク（標準偏差）を考慮した確率的予測（モンテカルロ法）と、各変数が資産に与える影響（感応度分析）を実行します。
+        </p>
+        <div id="advancedRiskResult" style="white-space: pre-line; line-height: 1.7; background: #f8f9fe; border-radius: 8px; padding: 16px;">
+          分析ボタンを押して実行してください。
+        </div>
+      </div>
+      <div class="modal-buttons" style="justify-content: flex-end;">
+        <button type="button" id="runAdvancedAnalysisInternalBtn" class="primary">分析を実行</button>
+        <button type="button" id="closeAdvancedAnalysisBtn" class="secondary">✕ 閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Safe JSON Parser ---
+    function safeJSONParse(str, defaultVal) {
+        try {
+            return str ? JSON.parse(str) : defaultVal;
+        } catch (e) {
+            console.warn("JSON Parse Error:", e);
+            return defaultVal;
+        }
+    }
+
+    // --- NEW: Mode Selection and Tab Logic ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const modeModal = document.getElementById('mode-selection-modal');
+        const sampleAccordionHeader = document.querySelector('.accordion-header[data-section="sample"]');
+        const sampleAccordionContent = sampleAccordionHeader.nextElementSibling;
+        
+        // かんたんシミュレーション
+        document.getElementById('easy-sim-btn').addEventListener('click', () => {
+            modeModal.style.display = 'none'; // Use style.display to hide instead of remove class for persistence
+            document.getElementById('assistModal').classList.add('show');
+        });
+
+        // 詳細シミュレーション
+        document.getElementById('detailed-sim-btn').addEventListener('click', () => {
+            modeModal.style.display = 'none';
+        });
+        
+        // サンプルデータ
+        document.getElementById('sample-data-mode-btn').addEventListener('click', () => {
+            modeModal.style.display = 'none';
+            // Open accordion if not already open
+            if (!sampleAccordionHeader.classList.contains('active')) {
+                sampleAccordionHeader.classList.add('active');
+                sampleAccordionContent.classList.add('active');
+            }
+            sampleAccordionHeader.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                const targetTab = button.dataset.tab;
+                tabContents.forEach(content => {
+                    if (content.id === targetTab) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+    });
+
+
+    // --- Original Script (with minor adjustments) ---
+    const fmt = new Intl.NumberFormat('ja-JP',{maximumFractionDigits:0});
+    function formatAmount(v){ return fmt.format(Math.floor(v)); }
+    function toNumber(val, def=0){ const n=parseFloat(val); return Number.isFinite(n)?n:def; }
+    function calcProgressiveTax(amount){
+      const b=[{l:195,r:0.05},{l:330,r:0.1},{l:695,r:0.2},{l:900,r:0.23},{l:1800,r:0.33},{l:4000,r:0.4},{l:Infinity,r:0.45}];
+      let tax=0,prev=0;
+      for(const br of b){
+        if(amount>br.l){ tax+=(br.l-prev)*br.r; prev=br.l; }
+        else{ tax+=(amount-prev)*br.r; break; }
+      }
+      return Math.floor(tax);
+    }
+    function calcSalaryTaxAndSocial(salaryPlusBonusManYen){
+      const tax = calcProgressiveTax(salaryPlusBonusManYen);
+      const social = Math.floor(salaryPlusBonusManYen * 0.15);
+      return { tax, social };
+    }
+    function calcPensionTaxAndSocial(pensionManYen){
+      const deduction = 120;
+      const taxable = Math.max(0, pensionManYen - deduction);
+      const tax = calcProgressiveTax(taxable);
+      const social = Math.floor(pensionManYen * 0.10);
+      return { tax, social };
+    }
+    function calcLoanMonthly(principal, annualRate, years) {
+      if (principal <= 0 || years <= 0) return 0;
+      const monthlyRate = annualRate / 100 / 12;
+      const n = years * 12;
+      if (monthlyRate === 0) return principal / n;
+      return principal * monthlyRate * Math.pow(1 + monthlyRate, n) / (Math.pow(1 + monthlyRate, n) - 1);
+    }
+    // 正規分布（平均0, 標準偏差1）の乱数を生成 (Box-Muller法)
+    function randn_bm() {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random(); // 0を除く
+        while(v === 0) v = Math.random();
+        return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+    }
+    function calculateSurvivorsPension(params, deathAge, pensionTermYears, currentYearIndex) {
+        const selfAge = toNumber(params.family.self?.age, 30);
+        let totalPension = 0;
+        const KOSEI_NENKIN_RATE = 5.481 / 1000;
+        const avgMonthlySalary = params.pensionConfig.selfAvgMonthly || 0;
+        const pensionMonths = Math.max(300, pensionTermYears * 12); 
+        const oldAgePensionPortion = avgMonthlySalary * KOSEI_NENKIN_RATE * pensionMonths;
+        const survivorsEmployeesPension = oldAgePensionPortion * 0.75;
+        totalPension += survivorsEmployeesPension;
+        const children = params.family.children || [];
+        const deathYearSimIndex = deathAge - selfAge;
+        const spouseAgeAtDeath = (params.family.spouse?.age || 0) + deathYearSimIndex;
+        const spouseCurrentAge = spouseAgeAtDeath + (currentYearIndex - deathYearSimIndex);
+        const eligibleChildren = children.map(c => c.age + currentYearIndex).filter(age => age >= 0 && age < 18);
+        if (eligibleChildren.length > 0) {
+            let basicPension = 81.6; 
+            if (eligibleChildren.length >= 1) basicPension += 23.48;
+            if (eligibleChildren.length >= 2) basicPension += 23.48;
+            if (eligibleChildren.length >= 3) {
+                basicPension += (eligibleChildren.length - 2) * 7.83;
+            }
+            totalPension += basicPension;
+        } else {
+            if ((params.family.spouse?.age || 0) > 0 && spouseCurrentAge >= 40 && spouseCurrentAge < 65) {
+                totalPension += 61.2;
+            }
+        }
+        return totalPension;
+    }
+    document.querySelectorAll('.accordion-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const content = header.nextElementSibling;
+        const isActive = header.classList.contains('active');
+        if (isActive) { header.classList.remove('active'); content.classList.remove('active'); }
+        else { header.classList.add('active'); content.classList.add('active'); }
+      });
+    });
+    const sampleData = {
+      single: {
+        selfName: '太郎', selfAge: 25, initialCash: 50, incomeStart: 400, incomeGrowth: 2, retireAge: 65, retirementBonus: 1000, livingCost: 18, inflation: 2,
+        familyConfig: {self: {name: '太郎', age: 25}, spouse: {name: '', age: 0}, selfParents: [], spouseParents: [], children: []},
+        housingConfig: JSON.stringify([{name: '賃貸アパート', type: 'rent', occStart: 25, occEnd: 100, repayStart: null, repayEnd: null, monthly: 8, maintMonthly: 0, principal: 0, rate: 0, bonusAdd: 0, resolvedMonthly: 0}]),
+        educationConfig: '[]', planConfig: '[]', assetConfig: '[]',
+        spouseIncomeSettings: JSON.stringify({incomeStart: 0, incomeGrowthPct: 0, retireAge: 65, retirementBonus: 0}),
+        pensionConfig: JSON.stringify({ selfAvgMonthly: 30, spouseAvgMonthly: 0 }),
+        dcConfig: JSON.stringify({corp:0, indiv:0, rate:3, initial: 0})
+      },
+      family: {
+        selfName: '健二', selfAge: 30, initialCash: 200, incomeStart: 500, incomeGrowth: 2, retireAge: 65, retirementBonus: 1500, livingCost: 25, inflation: 2,
+        familyConfig: {self: {name: '健二', age: 30}, spouse: {name: '美咲', age: 30}, selfParents: [], spouseParents: [], children: [{name: '太郎', age: 2}, {name: '花子', age: 0}]},
+        housingConfig: JSON.stringify([{name: 'マイホーム', type: 'loan', occStart: 30, occEnd: 100, repayStart: 30, repayEnd: 65, monthly: 0, maintMonthly: 1.5, principal: 3500, rate: 1.5, bonusAdd: 0, resolvedMonthly: 0}]),
+        educationConfig: JSON.stringify([{"name":"太郎","elementary":30,"junior":50,"high":70,"university":150,"other":20},{"name":"花子","elementary":30,"junior":50,"high":70,"university":150,"other":20}]),
+        planConfig: JSON.stringify([{name: '車購入', age: 35, amount: 300, repeat: '10years', endAge: 65}]),
+        assetConfig: JSON.stringify([{name: 'つみたてNISA', initial: 10, start: 30, end: 60, amount: 30, rate: 5, takeoutType: 'division', takeoutAmount: 100}]),
+        spouseIncomeSettings: JSON.stringify({incomeStart: 150, incomeGrowthPct: 1, retireAge: 60, retirementBonus: 300}),
+        pensionConfig: JSON.stringify({ selfAvgMonthly: 35, spouseAvgMonthly: 10 }),
+        dcConfig: JSON.stringify({corp:10000, indiv:10000, rate:3, initial: 50})
+      },
+      'senior-couple': {
+        selfName: '正夫', selfAge: 60, initialCash: 1500, incomeStart: 600, incomeGrowth: 0, retireAge: 65, retirementBonus: 3000, livingCost: 28, inflation: 2,
+        familyConfig: {self: {name: '正夫', age: 60}, spouse: {name: '幸子', age: 58}, selfParents: [], spouseParents: [], children: []},
+        housingConfig: JSON.stringify([{name: '持ち家（完済済み）', type: 'loan', occStart: 60, occEnd: 100, repayStart: null, repayEnd: null, monthly: 0, maintMonthly: 1, principal: 0, rate: 0, bonusAdd: 0, resolvedMonthly: 0}]),
+        educationConfig: '[]', planConfig: '[]', assetConfig: '[]',
+        spouseIncomeSettings: JSON.stringify({incomeStart: 0, incomeGrowthPct: 0, retireAge: 65, retirementBonus: 0}),
+        pensionConfig: JSON.stringify({ selfAvgMonthly: 50, spouseAvgMonthly: 10 }),
+        dcConfig: JSON.stringify({corp:0, indiv:0, rate:3, initial: 0})
+      },
+      'senior-single': {
+        selfName: '一郎', selfAge: 65, initialCash: 800, incomeStart: 0, incomeGrowth: 0, retireAge: 65, retirementBonus: 0, livingCost: 20, inflation: 2,
+        familyConfig: {self: {name: '一郎', age: 65}, spouse: {name: '', age: 0}, selfParents: [], spouseParents: [], children: []},
+        housingConfig: JSON.stringify([{name: '賃貸マンション', type: 'rent', occStart: 65, occEnd: 100, repayStart: null, repayEnd: null, monthly: 10, maintMonthly: 0, principal: 0, rate: 0, bonusAdd: 0, resolvedMonthly: 0}]),
+        educationConfig: '[]', planConfig: '[]', assetConfig: '[]',
+        spouseIncomeSettings: JSON.stringify({incomeStart: 0, incomeGrowthPct: 0, retireAge: 65, retirementBonus: 0}),
+        pensionConfig: JSON.stringify({ selfAvgMonthly: 45, spouseAvgMonthly: 0 }),
+        dcConfig: JSON.stringify({corp:0, indiv:0, rate:3, initial: 0})
+      }
+    };
+    document.querySelectorAll('.sample-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const sampleKey = card.dataset.sample;
+        const data = sampleData[sampleKey];
+        if (!data) return;
+        const dataForSetter = {...data, familyConfig: JSON.stringify(data.familyConfig)};
+        setPlanData(dataForSetter);
+        alert(`サンプルデータ「${card.querySelector('.sample-card-title').textContent}」を読み込みました。\n「シミュレーション実行」ボタンを押してください。`);
+      });
+    });
+    function setupModal(modalId, openBtnId, closeBtnId){
+      const modal = document.getElementById(modalId);
+      if (openBtnId) document.getElementById(openBtnId)?.addEventListener('click', ()=> modal.classList.add('show'));
+      if (closeBtnId) document.getElementById(closeBtnId)?.addEventListener('click', ()=> modal.classList.remove('show'));
+      return modal;
+    }
+    setupModal('assistModal', null, null); 
+    setupModal('assetModal','openAssetBtn','closeAssetBtn');
+    setupModal('housingModal','openHousingBtn','closeHousingBtn');
+    setupModal('planModal','openPlanBtn','closePlanBtn');
+    setupModal('educationModal','openEducationBtn','closeEducationBtn');
+    setupModal('incomeModal','openIncomeBtn','closeIncomeBtn');
+    setupModal('spouseIncomeModal','openSpouseIncomeSettingsBtn','closeSpouseIncomeSettingsBtn');
+    setupModal('familyModal','openFamilyBtn','closeFamilyBtn');
+    setupModal('loanDetailModal', null, 'closeLoanDetailBtn');
+    setupModal('pensionModal', 'openPensionBtn', 'closePensionBtn');
+    setupModal('dcModal', 'openDcBtn', 'closeDcBtn');
+    setupModal('assetAnalysisIntroModal', null, null); 
+    setupModal('insuranceIntroModal', 'insuranceBtn', null);
+    setupModal('insuranceModal', null, 'closeInsuranceBtn');
+
+    document.getElementById('openDcBtn').addEventListener('click', () => {
+        const config = safeJSONParse(document.getElementById('dcConfig').value, {corp:0, indiv:0, rate:3, initial: 0});
+        document.getElementById('dcCorpContribution').value = config.corp;
+        document.getElementById('dcIndivContribution').value = config.indiv;
+        document.getElementById('dcReturnRate').value = config.rate;
+        document.getElementById('dcInitialBalance').value = config.initial;
+    });
+    document.getElementById('applyDcBtn').addEventListener('click', () => {
+        const config = {
+            corp: toNumber(document.getElementById('dcCorpContribution').value, 0),
+            indiv: toNumber(document.getElementById('dcIndivContribution').value, 0),
+            rate: toNumber(document.getElementById('dcReturnRate').value, 3),
+            initial: toNumber(document.getElementById('dcInitialBalance').value, 0)
+        };
+        document.getElementById('dcConfig').value = JSON.stringify(config);
+        document.getElementById('dcModal').classList.remove('show');
+    });
+
+    function goToAssistStep(step) {
+        document.querySelectorAll('.assist-step').forEach(el => el.classList.remove('active'));
+        const familyStatus = document.getElementById('assistFamilyStatus').value;
+        const spouseSection = document.getElementById('assistSpouseSection');
+        if (step === 1 || (step === 2 && familyStatus === 'single')) {
+            spouseSection.style.display = 'none';
+        } else {
+            spouseSection.style.display = 'block';
+        }
+        if (step === 3 && familyStatus === 'single') {
+            document.getElementById('assistStep3').classList.add('active');
+            document.querySelector('#assistStep3 .secondary').onclick = () => goToAssistStep(1);
+        } else {
+            document.getElementById(`assistStep${step}`).classList.add('active');
+            if (step === 3) {
+                 document.querySelector('#assistStep3 .secondary').onclick = () => goToAssistStep(2);
+            }
+        }
+    }
+    document.getElementById('assistFamilyStatus').addEventListener('change', (e) => {
+        const spouseSection = document.getElementById('assistSpouseSection');
+        spouseSection.style.display = e.target.value === 'couple' ? 'block' : 'none';
+    });
+    document.getElementById('assistSpouseWork').addEventListener('change', (e) => {
+        const spouseIncomeSection = document.getElementById('assistSpouseIncomeSection');
+        spouseIncomeSection.style.display = e.target.value === 'full_time' ? 'block' : 'none';
+    });
+    document.getElementById('assistChildrenCount').addEventListener('change', (e) => {
+        const count = parseInt(e.target.value, 10);
+        const container = document.getElementById('assistChildrenContainer');
+        container.innerHTML = '';
+        for (let i = 1; i <= count; i++) {
+            container.insertAdjacentHTML('beforeend', `
+              <div class="input-group">
+                <label class="input-label">お子様${i}の年齢</label>
+                <input type="number" class="assist-child-age" value="0" min="0" max="18">
+              </div>
+            `);
+        }
+    });
+    document.getElementById('assistHousingType').addEventListener('change', (e) => {
+        const costGroup = document.getElementById('assistHousingCostGroup');
+        const costLabel = document.getElementById('assistHousingCostLabel');
+        if (e.target.value === 'owned') {
+            costGroup.style.display = 'none';
+        } else {
+            costGroup.style.display = 'flex';
+            costLabel.textContent = e.target.value === 'rent' ? '毎月の家賃' : '毎月の住宅ローン返済額';
+        }
+    });
+    document.getElementById('finishAssistBtn').addEventListener('click', () => {
+        const selfAge = toNumber(document.getElementById('assistSelfAge').value, 30);
+        const initialCash = toNumber(document.getElementById('assistInitialCash').value, 0);
+        const familyStatus = document.getElementById('assistFamilyStatus').value;
+        const income = toNumber(document.getElementById('assistIncome').value, 0);
+        const incomeGrowth = document.getElementById('assistIncomeGrowth').value;
+        const livingCost = toNumber(document.getElementById('assistLivingCost').value, 0);
+        const housingType = document.getElementById('assistHousingType').value;
+        const housingCost = toNumber(document.getElementById('assistHousingCost').value, 0);
+        document.querySelector('[name="selfAge"]').value = selfAge;
+        document.querySelector('[name="initialCash"]').value = initialCash;
+        let familyConfig = { self: { name: 'あなた', age: selfAge }, spouse: {}, children: [] };
+        let spouseIncomeSettings = { incomeStart: 0, incomeGrowthPct: 0, retireAge: 65, retirementBonus: 0 };
+        if (familyStatus === 'couple') {
+            const spouseAge = toNumber(document.getElementById('assistSpouseAge').value, 30);
+            familyConfig.spouse = { name: '配偶者', age: spouseAge };
+            const spouseWork = document.getElementById('assistSpouseWork').value;
+            if (spouseWork === 'part_time') {
+                spouseIncomeSettings = { incomeStart: 100, incomeGrowthPct: 0, retireAge: 65, retirementBonus: 100 };
+            } else if (spouseWork === 'full_time') {
+                const spouseIncome = toNumber(document.getElementById('assistSpouseIncome').value, 300);
+                spouseIncomeSettings = { 
+                    incomeStart: spouseIncome, 
+                    incomeGrowthPct: 1.5,
+                    retireAge: 65, 
+                    retirementBonus: Math.floor(spouseIncome * 1.5)
+                };
+            }
+            document.querySelectorAll('.assist-child-age').forEach((input, i) => {
+                familyConfig.children.push({ name: `お子様${i+1}`, age: toNumber(input.value) });
+            });
+        }
+        document.getElementById('spouseIncomeSettings').value = JSON.stringify(spouseIncomeSettings);
+        document.getElementById('familyConfig').value = JSON.stringify(familyConfig);
+        syncFamilyToSelf();
+        document.querySelector('[name="incomeStart"]').value = income;
+        const growthMap = { flat: 0.5, moderate: 2.0, high: 4.0 };
+        document.querySelector('[name="incomeGrowth"]').value = growthMap[incomeGrowth];
+        document.querySelector('[name="retirementBonus"]').value = Math.floor(income * 2.5);
+        document.querySelector('[name="livingCost"]').value = livingCost;
+        let housingConfig = [];
+        if (housingType === 'rent') {
+            housingConfig.push({ name: '賃貸', type: 'rent', monthly: housingCost, occStart: selfAge, occEnd: 100 });
+        } else if (housingType === 'loan') {
+            housingConfig.push({ name: '持ち家', type: 'loan', maintMonthly: 1.5, repayStart: selfAge, repayEnd: selfAge + 35, resolvedMonthly: housingCost });
+        } else { 
+             housingConfig.push({ name: '持ち家', type: 'owned', maintMonthly: 1.5, occStart: selfAge, occEnd: 100 });
+        }
+        document.getElementById('housingConfig').value = JSON.stringify(housingConfig);
+        document.querySelector('[name="inflation"]').value = 2;
+        document.getElementById('assetConfig').value = '[]';
+        document.getElementById('planConfig').value = '[]';
+        let educationConfig = [];
+        familyConfig.children.forEach(c => {
+            educationConfig.push({ name: c.name, elementary: 30, junior: 50, high: 70, university: 150, other: 10 });
+        });
+        document.getElementById('educationConfig').value = JSON.stringify(educationConfig);
+        document.getElementById('assistModal').classList.remove('show');
+        alert('かんたん入力が完了しました。「シミュレーション実行」ボタンを押して結果を確認してください。');
+        document.getElementById('lifePlanForm').scrollIntoView({ behavior: 'smooth' });
+    });
+    document.getElementById('openPensionBtn').addEventListener('click', () => {
+        const config = safeJSONParse(document.getElementById('pensionConfig').value, {selfAvgMonthly:30, spouseAvgMonthly:0});
+        document.getElementById('selfAvgMonthlyPension').value = config.selfAvgMonthly;
+        document.getElementById('spouseAvgMonthlyPension').value = config.spouseAvgMonthly;
+    });
+    document.getElementById('applyPensionBtn').addEventListener('click', () => {
+        const config = {
+            selfAvgMonthly: toNumber(document.getElementById('selfAvgMonthlyPension').value, 30),
+            spouseAvgMonthly: toNumber(document.getElementById('spouseAvgMonthlyPension').value, 0)
+        };
+        document.getElementById('pensionConfig').value = JSON.stringify(config);
+        document.getElementById('pensionModal').classList.remove('show');
+    });
+    function syncSelfToFamily(){
+      const name = document.getElementById('selfNameInput').value.trim();
+      const age = toNumber(document.getElementById('selfAgeInput').value, 0);
+      const fam = safeJSONParse(document.getElementById('familyConfig').value, {});
+      fam.self = { ...(fam.self||{}), name, age };
+      document.getElementById('familyConfig').value = JSON.stringify(fam);
+    }
+    function syncFamilyToSelf(){
+      const fam = safeJSONParse(document.getElementById('familyConfig').value, {});
+      const self = fam.self || {};
+      if (typeof self.name === 'string' && self.name.trim() !== '') document.getElementById('selfNameInput').value = self.name;
+      if (Number.isFinite(self.age) && self.age > 0) document.getElementById('selfAgeInput').value = self.age;
+    }
+    document.getElementById('selfNameInput').addEventListener('input', syncSelfToFamily);
+    document.getElementById('selfAgeInput').addEventListener('input', syncSelfToFamily);
+    function populateAssetModal(){
+      const body = document.getElementById('assetTableBody');
+      const cfg = safeJSONParse(document.getElementById('assetConfig').value, []);
+      body.innerHTML = '';
+      const rowsToRender = (Array.isArray(cfg) && cfg.length > 0) ? cfg : [
+        {name:'', initial:0, start:0, end:0, amount:0, rate:0, takeoutType: 'lumpSum', takeoutAmount: 0, takeoutRate: 0}, {name:'', initial:0, start:0, end:0, amount:0, rate:0, takeoutType: 'lumpSum', takeoutAmount: 0, takeoutRate: 0}, {name:'', initial:0, start:0, end:0, amount:0, rate:0, takeoutType: 'lumpSum', takeoutAmount: 0, takeoutRate: 0}, {name:'', initial:0, start:0, end:0, amount:0, rate:0, takeoutType: 'lumpSum', takeoutAmount: 0, takeoutRate: 0}, {name:'', initial:0, start:0, end:0, amount:0, rate:0, takeoutType: 'lumpSum', takeoutAmount: 0, takeoutRate: 0}
+      ];
+      rowsToRender.forEach(row => {
+        const isDivision = row.takeoutType === 'division';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="text" data-type="name" value="${row.name||''}" placeholder="商品名（任意）"></td>
+          <td><input type="number" data-type="initial" value="${toNumber(row.initial,0)}" min="0"></td>
+          <td><input type="number" data-type="start" value="${toNumber(row.start,0)}" min="0"></td>
+          <td><input type="number" data-type="end" value="${toNumber(row.end,0)}" min="0"></td>
+          <td><input type="number" data-type="amount" value="${toNumber(row.amount,0)}" min="0"></td>
+          <td><input type="number" data-type="rate" value="${toNumber(row.rate,0)}" step="0.1"></td>
+          <td><input type="number" data-type="stdev" value="${toNumber(row.stdev,15)}" step="0.1"></td> <td>
+            <select data-type="takeoutType">
+              <option value="lumpSum" ${!isDivision ? 'selected' : ''}>一括受取</option>
+              <option value="division" ${isDivision ? 'selected' : ''}>分割</option>
+            </select>
+          </td>
+          <td><input type="number" data-type="takeoutAmount" class="takeout-field" min="0" value="${toNumber(row.takeoutAmount, 0)}" style="display:${isDivision ? 'block' : 'none'};"></td>
+          <td><input type="number" data-type="takeoutRate" class="takeout-field" step="0.1" value="${toNumber(row.takeoutRate, 0)}" style="display:${isDivision ? 'block' : 'none'};"></td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+    document.getElementById('assetTableBody').addEventListener('change', (e) => {
+        if (e.target.dataset.type === 'takeoutType') {
+            const row = e.target.closest('tr');
+            row.querySelectorAll('.takeout-field').forEach(el => {
+                el.style.display = e.target.value === 'division' ? 'block' : 'none';
+            });
+        }
+    });
+    function readAssetConfig(){
+      const rows = document.querySelectorAll('#assetTableBody tr');
+      const config = [];
+      rows.forEach((r, idx)=>{
+        const nameEl = r.querySelector('input[data-type="name"]');
+        let name = nameEl?.value.trim() ?? '';
+        const initial = toNumber(r.querySelector('input[data-type="initial"]')?.value, 0);
+        const amount = toNumber(r.querySelector('input[data-type="amount"]')?.value, 0);
+        const hasValues = initial > 0 || amount > 0;
+        
+        if (hasValues) {
+          if (!name) name = `金融商品${idx + 1}`;
+          config.push({
+            name, initial,
+            start: toNumber(r.querySelector('input[data-type="start"]')?.value, 0),
+            end: toNumber(r.querySelector('input[data-type="end"]')?.value, 0),
+            amount,
+            rate: toNumber(r.querySelector('input[data-type="rate"]')?.value, 0),
+            stdev: toNumber(r.querySelector('input[data-type="stdev"]')?.value, 15), 
+            takeoutType: r.querySelector('select[data-type="takeoutType"]')?.value || 'lumpSum',
+            takeoutAmount: toNumber(r.querySelector('input[data-type="takeoutAmount"]')?.value, 0),
+            takeoutRate: toNumber(r.querySelector('input[data-type="takeoutRate"]')?.value, 0)
+          });
+        }
+      });
+      return { config, errors:[] };
+    }
+    document.getElementById('openAssetBtn').addEventListener('click', populateAssetModal);
+    document.getElementById('applyAssetBtn').addEventListener('click', ()=>{
+      const { config } = readAssetConfig();
+      document.getElementById('assetConfig').value = JSON.stringify(config);
+      document.getElementById('assetModal').classList.remove('show');
+    });
+    function refreshHousingRowUI(row){
+      const typeSel = row.querySelector('select[data-type="type"]');
+      const isLoan = typeSel?.value === 'loan';
+      row.querySelectorAll('.loan-field, .loan-monthly-display').forEach(el=> el.classList.toggle('hidden', !isLoan));
+      const loanBtn = row.querySelector('.loan-detail-btn'); if (loanBtn) loanBtn.classList.toggle('hidden', !isLoan);
+      row.querySelector('input[data-type="monthly"]')?.toggleAttribute('disabled', isLoan);
+      const maint = row.querySelector('input[data-type="maintMonthly"]'); if (maint) maint.toggleAttribute('disabled', !isLoan);
+      updateLoanMonthlyDisplay(row);
+    }
+    function updateLoanMonthlyDisplay(row){
+      const disp = row.querySelector('.loan-monthly-display');
+      if (!disp || disp.classList.contains('hidden')) return;
+      const repayStart = toNumber(row.querySelector('input[data-type="repayStart"]')?.value, NaN);
+      const repayEnd = toNumber(row.querySelector('input[data-type="repayEnd"]')?.value, NaN);
+      const principal = toNumber(row.dataset.principal, 0);
+      const rate = toNumber(row.dataset.rate, 0);
+      const bonusAdd = toNumber(row.dataset.bonusAdd, 0);
+      if (!Number.isFinite(repayStart) || !Number.isFinite(repayEnd) || repayEnd < repayStart || principal<=0) { disp.textContent='-'; return; }
+      const years = Math.max(1, repayEnd - repayStart + 1);
+      const m = calcLoanMonthly(principal, rate, years) + (bonusAdd>0 ? bonusAdd/12 : 0);
+      disp.textContent = `${formatAmount(m)} 万円/月`;
+    }
+    function createHousingRow(){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" data-type="name" placeholder="名称（任意）"></td>
+        <td>
+          <select data-type="type">
+            <option value="rent" selected>家賃</option>
+            <option value="loan">住宅ローン</option>
+          </select>
+        </td>
+        <td><input type="number" value="" data-type="occStart" min="18"></td>
+        <td><input type="number" value="" data-type="occEnd" min="18"></td>
+        <td><input type="number" value="" data-type="repayStart" min="18" class="loan-field hidden"></td>
+        <td><input type="number" value="" data-type="repayEnd" min="18" class="loan-field hidden"></td>
+        <td><input type="number" value="" data-type="monthly" min="0" step="0.1"></td>
+        <td><input type="number" value="" data-type="maintMonthly" min="0" step="0.1" class="loan-field hidden"></td>
+        <td><button type="button" class="secondary loan-detail-btn hidden">ローン詳細</button></td>
+        <td><span class="loan-monthly-display hidden">-</span></td>
+        <td><button type="button" class="danger delete-row-btn">削除</button></td>
+      `;
+      return tr;
+    }
+    function populateHousingModal(){
+      const body = document.getElementById('housingTableBody');
+      const cfg = safeJSONParse(document.getElementById('housingConfig').value, []);
+      body.innerHTML = '';
+      
+      if (!Array.isArray(cfg) || cfg.length === 0) {
+        const row = createHousingRow();
+        body.appendChild(row);
+        refreshHousingRowUI(row);
+      } else {
+        cfg.forEach(item => {
+          const row = createHousingRow();
+          row.querySelector('input[data-type="name"]').value = item.name || '';
+          row.querySelector('select[data-type="type"]').value = item.type || 'rent';
+          row.querySelector('input[data-type="occStart"]').value = item.occStart ?? '';
+          row.querySelector('input[data-type="occEnd"]').value = item.occEnd ?? '';
+          row.querySelector('input[data-type="repayStart"]').value = item.repayStart ?? '';
+          row.querySelector('input[data-type="repayEnd"]').value = item.repayEnd ?? '';
+          row.querySelector('input[data-type="monthly"]').value = item.monthly || '';
+          row.querySelector('input[data-type="maintMonthly"]').value = item.maintMonthly || '';
+          row.dataset.principal = item.principal || '0';
+          row.dataset.rate = item.rate || '0';
+          row.dataset.bonusAdd = item.bonusAdd || '0';
+          body.appendChild(row);
+          refreshHousingRowUI(row);
+        });
+      }
+    }
+    document.getElementById('openHousingBtn').addEventListener('click', populateHousingModal);
+    document.getElementById('addHousingRowBtn').addEventListener('click', ()=>{
+      const row = createHousingRow();
+      document.getElementById('housingTableBody').appendChild(row);
+      refreshHousingRowUI(row);
+    });
+    let currentLoanRow = null;
+    document.getElementById('housingTableBody').addEventListener('click', (e)=>{
+      const row = e.target.closest('tr');
+      if (!row) return;
+      if (e.target.classList.contains('loan-detail-btn')) {
+        currentLoanRow = row;
+        document.getElementById('loanPrincipal').value = toNumber(row.dataset.principal, 3500);
+        document.getElementById('loanRate').value = toNumber(row.dataset.rate, 1.5);
+        document.getElementById('loanBonusAdd').value = toNumber(row.dataset.bonusAdd, 0);
+        document.getElementById('loanDetailModal').classList.add('show');
+      }
+      if (e.target.classList.contains('delete-row-btn')) row.remove();
+    });
+    document.getElementById('housingTableBody').addEventListener('change', (e)=>{
+      const row = e.target.closest('tr'); if (!row) return;
+      if (e.target.matches('select[data-type="type"]')) refreshHousingRowUI(row);
+      if (e.target.matches('input[data-type="repayStart"], input[data-type="repayEnd"]')) updateLoanMonthlyDisplay(row);
+    });
+    document.getElementById('applyLoanDetailBtn').addEventListener('click', ()=>{
+      if (!currentLoanRow) return;
+      currentLoanRow.dataset.principal = String(toNumber(document.getElementById('loanPrincipal').value, 0));
+      currentLoanRow.dataset.rate = String(toNumber(document.getElementById('loanRate').value, 0));
+      currentLoanRow.dataset.bonusAdd = String(toNumber(document.getElementById('loanBonusAdd').value, 0));
+      updateLoanMonthlyDisplay(currentLoanRow);
+      document.getElementById('loanDetailModal').classList.remove('show');
+      currentLoanRow = null;
+    });
+    function readHousingConfig(){
+      const rows = document.querySelectorAll('#housingTableBody tr');
+      const config = [];
+      rows.forEach((r, idx)=>{
+        const nameEl = r.querySelector('input[data-type="name"]');
+        let name = nameEl?.value.trim() ?? '';
+        const type = r.querySelector('select[data-type="type"]')?.value ?? 'rent';
+        
+        let occStart = toNumber(r.querySelector('input[data-type="occStart"]')?.value, NaN);
+        let occEnd   = toNumber(r.querySelector('input[data-type="occEnd"]')?.value, NaN);
+        if (Number.isFinite(occStart) && Number.isFinite(occEnd) && occEnd < occStart) [occStart,occEnd] = [occEnd,occStart];
+        
+        let repayStart = toNumber(r.querySelector('input[data-type="repayStart"]')?.value, NaN);
+        let repayEnd   = toNumber(r.querySelector('input[data-type="repayEnd"]')?.value, NaN);
+        if (Number.isFinite(repayStart) && Number.isFinite(repayEnd) && repayEnd < repayStart) [repayStart,repayEnd] = [repayEnd,repayStart];
+
+        const monthlyEntered = toNumber(r.querySelector('input[data-type="monthly"]')?.value, 0);
+        const maintMonthly = toNumber(r.querySelector('input[data-type="maintMonthly"]')?.value, 0);
+        const principal = toNumber(r.dataset.principal, 0);
+        const rate = toNumber(r.dataset.rate, 0);
+        const bonusAdd = toNumber(r.dataset.bonusAdd, 0);
+
+        let resolvedMonthly = 0;
+        if (type === 'loan' && principal > 0 && Number.isFinite(repayStart) && Number.isFinite(repayEnd)) {
+          const years = Math.max(1, repayEnd - repayStart + 1);
+          resolvedMonthly = calcLoanMonthly(principal, rate, years) + (bonusAdd > 0 ? (bonusAdd / 12) : 0);
+        }
+
+        const hasFinancials = (type === 'rent' && monthlyEntered > 0) || (type === 'loan' && (principal > 0 || maintMonthly > 0 || resolvedMonthly > 0));
+
+        if (hasFinancials) {
+          if (!name) name = `住居${idx + 1}`;
+          
+          config.push({
+            name, type,
+            occStart: Number.isFinite(occStart) ? occStart : null,
+            occEnd: Number.isFinite(occEnd) ? occEnd : null,
+            repayStart: Number.isFinite(repayStart) ? repayStart : null,
+            repayEnd: Number.isFinite(repayEnd) ? repayEnd : null,
+            monthly: monthlyEntered,
+            maintMonthly,
+            principal, rate, bonusAdd,
+            resolvedMonthly
+          });
+        }
+      });
+      return { config, errors: [] };
+    }
+    document.getElementById('applyHousingBtn').addEventListener('click', ()=>{
+      const { config } = readHousingConfig();
+      document.getElementById('housingConfig').value = JSON.stringify(config);
+      document.getElementById('housingModal').classList.remove('show');
+    });
+    function createPlanRow(){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" data-type="name" value="" placeholder="例: 車購入"></td>
+            <td><input type="number" data-type="age" value="" min="0"></td>
+            <td><input type="number" data-type="amount" value="0" min="0"></td>
+            <td>
+              <select data-type="repeat">
+                <option value="once" selected>一度のみ</option>
+                <option value="yearly">毎年</option>
+                <option value="5years">5年毎</option>
+                <option value="10years">10年毎</option>
+              </select>
+            </td>
+            <td><input type="number" data-type="endAge" value="" min="0"></td>
+        `;
+        return tr;
+    }
+    document.getElementById('addPlanRowBtn').addEventListener('click', () => {
+        document.getElementById('planTableBody').appendChild(createPlanRow());
+    });
+    function populatePlanModal(){
+      const body = document.getElementById('planTableBody');
+      const cfg = safeJSONParse(document.getElementById('planConfig').value, []);
+      body.innerHTML = '';
+      const rowsToRender = (Array.isArray(cfg) && cfg.length > 0) ? cfg : [{}]; // Start with one empty row
+      rowsToRender.forEach(row => {
+        const tr = createPlanRow();
+        tr.querySelector('input[data-type="name"]').value = row.name || '';
+        tr.querySelector('input[data-type="age"]').value = row.age || '';
+        tr.querySelector('input[data-type="amount"]').value = toNumber(row.amount,0);
+        tr.querySelector('select[data-type="repeat"]').value = row.repeat || 'once';
+        tr.querySelector('input[data-type="endAge"]').value = row.endAge || '';
+        body.appendChild(tr);
+      });
+    }
+
+    document.getElementById('openPlanBtn').addEventListener('click', populatePlanModal);
+    function readPlanConfig(){
+      const rows = document.querySelectorAll('#planTableBody tr');
+      const config = [];
+      rows.forEach(r=>{
+        const name = r.querySelector('input[data-type="name"]')?.value.trim() ?? '';
+        const amount = toNumber(r.querySelector('input[data-type="amount"]')?.value, 0);
+        if(!name && amount <= 0) return; // Skip empty rows
+        config.push({
+          name: name || '名称未設定',
+          age: toNumber(r.querySelector('input[data-type="age"]')?.value, 0),
+          amount: amount,
+          repeat: r.querySelector('select[data-type="repeat"]')?.value ?? 'once',
+          endAge: toNumber(r.querySelector('input[data-type="endAge"]')?.value, 0)
+        });
+      });
+      return config;
+    }
+    document.getElementById('applyPlanBtn').addEventListener('click', ()=>{
+      document.getElementById('planConfig').value = JSON.stringify(readPlanConfig());
+      document.getElementById('planModal').classList.remove('show');
+    });
+    document.getElementById('openEducationBtn').addEventListener('click', () => {
+        const familyData = safeJSONParse(document.getElementById('familyConfig').value, {});
+        const educationData = safeJSONParse(document.getElementById('educationConfig').value, []);
+        const eduMap = new Map(educationData.map(item => [item.name, item]));
+        const body = document.getElementById('educationTableBody');
+        body.innerHTML = '';
+        if (!familyData.children || familyData.children.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">「家族構成」でお子様を追加してください。</td></tr>';
+            document.getElementById('educationModal').classList.add('show');
+            return;
+        }
+        familyData.children.forEach(child => {
+            const savedChildEdu = eduMap.get(child.name) || {};
+            const isFuture = child.age < 0;
+            const ageDisplay = isFuture ? `${-child.age}年後予定` : `${child.age}歳`;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${child.name || '(無名)'}</td>
+              <td style="font-weight:500;">${ageDisplay}</td>
+              <td><input type="number" data-name="${child.name}" data-type="elementary" value="${toNumber(savedChildEdu.elementary, 30)}" min="0" ${isFuture ? 'disabled' : ''}></td>
+              <td><input type="number" data-name="${child.name}" data-type="junior" value="${toNumber(savedChildEdu.junior, 50)}" min="0" ${isFuture ? 'disabled' : ''}></td>
+              <td><input type="number" data-name="${child.name}" data-type="high" value="${toNumber(savedChildEdu.high, 70)}" min="0" ${isFuture ? 'disabled' : ''}></td>
+              <td><input type="number" data-name="${child.name}" data-type="university" value="${toNumber(savedChildEdu.university, 150)}" min="0" ${isFuture ? 'disabled' : ''}></td>
+              <td><input type="number" data-name="${child.name}" data-type="other" value="${toNumber(savedChildEdu.other, 20)}" min="0" ${isFuture ? 'disabled' : ''}></td>
+            `;
+            body.appendChild(tr);
+        });
+        document.getElementById('educationModal').classList.add('show');
+    });
+    document.getElementById('applyEducationBtn').addEventListener('click', () => {
+        const rows = document.querySelectorAll('#educationTableBody tr');
+        const config = [];
+        rows.forEach(r => {
+            const name = r.querySelector('input[data-name]')?.dataset.name;
+            if (!name) return;
+            config.push({
+                name: name,
+                elementary: toNumber(r.querySelector('input[data-type="elementary"]')?.value, 0),
+                junior: toNumber(r.querySelector('input[data-type="junior"]')?.value, 0),
+                high: toNumber(r.querySelector('input[data-type="high"]')?.value, 0),
+                university: toNumber(r.querySelector('input[data-type="university"]')?.value, 0),
+                other: toNumber(r.querySelector('input[data-type="other"]')?.value, 0)
+            });
+        });
+        document.getElementById('educationConfig').value = JSON.stringify(config);
+        document.getElementById('educationModal').classList.remove('show');
+    });
+    const familyGrid = document.getElementById('familyGrid');
+    const childrenBody = document.getElementById('childrenTableBody');
+    const personNameInput = document.getElementById('personNameInput');
+    const personAgeInput = document.getElementById('personAgeInput');
+    const personDetailTitle = document.getElementById('personDetailTitle');
+
+    function loadFamilyUI(){
+      const data = safeJSONParse(document.getElementById('familyConfig').value, {});
+      const summaries = {
+        self: `名前: ${data?.self?.name ?? ''} / 年齢: ${data?.self?.age ?? ''}`,
+        spouse: `名前: ${data?.spouse?.name ?? ''} / 年齢: ${data?.spouse?.age ?? ''}`,
+        selfFather: `名前: ${data?.selfParents?.[0]?.name ?? ''} / 年齢: ${data?.selfParents?.[0]?.age ?? ''}`,
+        selfMother: `名前: ${data?.selfParents?.[1]?.name ?? ''} / 年齢: ${data?.selfParents?.[1]?.age ?? ''}`,
+        spouseFather: `名前: ${data?.spouseParents?.[0]?.name ?? ''} / 年齢: ${data?.spouseParents?.[0]?.age ?? ''}`,
+        spouseMother: `名前: ${data?.spouseParents?.[1]?.name ?? ''} / 年齢: ${data?.spouseParents?.[1]?.age ?? ''}`,
+      };
+      familyGrid.querySelectorAll('.person-card').forEach(card=>{
+        const role = card.dataset.role;
+        card.querySelector('[data-summary]').textContent = summaries[role] || '';
+      });
+      childrenBody.innerHTML = '';
+      (data.children||[]).forEach((ch, idx)=>{
+        const isFuture = ch.age < 0;
+        const ageVal = isFuture ? -ch.age : ch.age;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="text" data-idx="${idx}" data-field="name" value="${ch.name||''}"></td>
+          <td>
+             <select data-idx="${idx}" data-field="type">
+                <option value="current" ${!isFuture ? 'selected' : ''}>現在</option>
+                <option value="future" ${isFuture ? 'selected' : ''}>年後誕生</option>
+             </select>
+          </td>
+          <td><input type="number" data-idx="${idx}" data-field="ageVal" value="${ageVal}" min="0" max="25"></td>
+          <td><button type="button" class="secondary" data-action="remove" data-idx="${idx}">削除</button></td>
+        `;
+        childrenBody.appendChild(tr);
+      });
+    }
+    document.getElementById('openFamilyBtn').addEventListener('click', ()=>{ syncSelfToFamily(); loadFamilyUI(); });
+
+    let activeRole = 'self';
+    familyGrid.querySelector('[data-role="self"]').classList.add('active');
+    familyGrid.addEventListener('click', (e)=>{
+      const card = e.target.closest('.person-card'); if (!card) return;
+      familyGrid.querySelectorAll('.person-card').forEach(c=>c.classList.remove('active'));
+      card.classList.add('active'); activeRole = card.dataset.role;
+      const data = safeJSONParse(document.getElementById('familyConfig').value, {});
+      let person = null, title = '';
+      if (activeRole === 'self') { person = data.self || {name:'',age:0}; title = '本人 詳細'; }
+      else if (activeRole === 'spouse') { person = data.spouse || {name:'',age:0}; title = '配偶者 詳細'; }
+      else if (activeRole === 'selfFather') { person = (data.selfParents||[{},{}])[0] || {name:'',age:0}; title = '父（本人） 詳細'; }
+      else if (activeRole === 'selfMother') { person = (data.selfParents||[{},{}])[1] || {name:'',age:0}; title = '母（本人） 詳細'; }
+      else if (activeRole === 'spouseFather') { person = (data.spouseParents||[{},{}])[0] || {name:'',age:0}; title = '父（配偶者） 詳細'; }
+      else if (activeRole === 'spouseMother') { person = (data.spouseParents||[{},{}])[1] || {name:'',age:0}; title = '母（配偶者） 詳細'; }
+      personDetailTitle.textContent = title;
+      personNameInput.value = person?.name || '';
+      personAgeInput.value = toNumber(person?.age, 0);
+    });
+    function writeBackActivePerson(){
+      if (!activeRole) return;
+      const data = safeJSONParse(document.getElementById('familyConfig').value, {});
+      const name = personNameInput.value.trim();
+      const age = toNumber(personAgeInput.value, 0);
+      if (activeRole === 'self') { data.self = { ...(data.self||{}), name, age }; }
+      else if (activeRole === 'spouse') { data.spouse = { ...(data.spouse||{}), name, age }; }
+      else if (activeRole === 'selfFather') { const arr = data.selfParents || [{},{}]; arr[0] = { ...(arr[0]||{}), name, age }; data.selfParents = arr; }
+      else if (activeRole === 'selfMother') { const arr = data.selfParents || [{},{}]; arr[1] = { ...(arr[1]||{}), name, age }; data.selfParents = arr; }
+      else if (activeRole === 'spouseFather') { const arr = data.spouseParents || [{},{}]; arr[0] = { ...(arr[0]||{}), name, age }; data.spouseParents = arr; }
+      else if (activeRole === 'spouseMother') { const arr = data.spouseParents || [{},{}]; arr[1] = { ...(arr[1]||{}), name, age }; data.spouseParents = arr; }
+      document.getElementById('familyConfig').value = JSON.stringify(data);
+      syncFamilyToSelf();
+      loadFamilyUI();
+    }
+    personNameInput.addEventListener('input', writeBackActivePerson);
+    personAgeInput.addEventListener('input', writeBackActivePerson);
+    document.getElementById('addChildBtn').addEventListener('click', ()=>{
+      const data = safeJSONParse(document.getElementById('familyConfig').value, {});
+      data.children = data.children || []; data.children.push({name:'', age:0});
+      document.getElementById('familyConfig').value = JSON.stringify(data); loadFamilyUI();
+    });
+    childrenBody.addEventListener('input', (e)=>{
+      const idx = toNumber(e.target.dataset.idx, -1);
+      if (idx < 0) return;
+
+      const data = safeJSONParse(document.getElementById('familyConfig').value, {});
+      data.children = data.children || [];
+      if (!data.children[idx]) data.children[idx] = {};
+      
+      const row = e.target.closest('tr');
+      const name = row.querySelector('[data-field="name"]').value;
+      const type = row.querySelector('[data-field="type"]').value;
+      const ageVal = toNumber(row.querySelector('[data-field="ageVal"]').value, 0);
+
+      data.children[idx].name = name;
+      data.children[idx].age = type === 'future' ? -ageVal : ageVal;
+
+      document.getElementById('familyConfig').value = JSON.stringify(data);
+    });
+    childrenBody.addEventListener('click', (e)=>{
+      if (e.target.dataset.action === 'remove') {
+        const idx = toNumber(e.target.dataset.idx, -1);
+        const data = safeJSONParse(document.getElementById('familyConfig').value, {});
+        data.children = (data.children||[]).filter((_,i)=> i!==idx);
+        document.getElementById('familyConfig').value = JSON.stringify(data);
+        loadFamilyUI();
+      }
+    });
+    document.getElementById('applyFamilyBtn').addEventListener('click', ()=>{
+      document.getElementById('familyModal').classList.remove('show');
+    });
+    function baseIncomeParams(target){
+      const form = document.getElementById('lifePlanForm');
+      const family = safeJSONParse(document.getElementById('familyConfig').value, {});
+      const selfAge = toNumber(family.self?.age, 30);
+      
+      if (target === 'spouse') {
+        const s = safeJSONParse(document.getElementById('spouseIncomeSettings').value, {incomeStart:0,incomeGrowthPct:0,retireAge:65,retirementBonus:0});
+        const spAge = toNumber(family?.spouse?.age, NaN);
+        const baseAge = Number.isFinite(spAge) && spAge > 0 ? spAge : selfAge;
+        return { baseAge, startIncome: s.incomeStart, growthPct: s.incomeGrowthPct, retireAge: s.retireAge };
+      }
+      return {
+        baseAge: selfAge,
+        startIncome: toNumber(form.incomeStart.value, 0),
+        growthPct: toNumber(form.incomeGrowth.value, 0),
+        retireAge: toNumber(form.retireAge.value, 65)
+      };
+    }
+    function getCustomIncomeStoreKey(target){ return target === 'spouse' ? 'customIncomeConfigSpouse' : 'customIncomeConfig'; }
+    function buildIncomeCustomTable(){
+      const target = document.getElementById('incomeTarget').value;
+      const { baseAge, startIncome, growthPct, retireAge } = baseIncomeParams(target);
+      const years = Math.max(1, retireAge - baseAge + 1);
+      const body = document.getElementById('incomeCustomBody'); body.innerHTML = '';
+      const existing = safeJSONParse(document.getElementById(getCustomIncomeStoreKey(target)).value, []);
+      const map = new Map(existing.map(e=>[e.age, e.salary])); const g = growthPct/100;
+      for (let i=0;i<years;i++){
+        const age = baseAge + i;
+        if (age > retireAge) break;
+        const base = (age <= retireAge) ? Math.floor(startIncome * Math.pow(1+g, i)) : '';
+        const val = map.has(age) ? map.get(age) : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="text-align:center;">${age}歳</td><td><input type="number" min="0" step="1" data-age="${age}" placeholder="${base}"></td>`;
+        if (val !== '') tr.querySelector('input').value = val;
+        body.appendChild(tr);
+      }
+      if (document.getElementById('incomeAutoAdjust').value === 'on') detectAndFill(target);
+    }
+    document.getElementById('incomeTarget').addEventListener('change', buildIncomeCustomTable);
+    document.getElementById('incomeAutoAdjust').addEventListener('change', ()=>{ if (document.getElementById('incomeAutoAdjust').value === 'on') detectAndFill(document.getElementById('incomeTarget').value); });
+    document.getElementById('incomeCustomBody').addEventListener('blur', ()=>{ if (document.getElementById('incomeAutoAdjust').value === 'on') detectAndFill(document.getElementById('incomeTarget').value, true); }, true);
+
+    function detectAndFill(target, keepFilled=true){
+      const emptyToZero = document.getElementById('incomeEmptyToZero')?.checked;
+      const inputs = Array.from(document.querySelectorAll('#incomeCustomBody input'));
+      if (emptyToZero) { inputs.forEach(inp=>{ if (inp.value === '') inp.value = '0'; }); return; }
+      const points = [];
+      inputs.forEach(inp=>{
+        if (inp.value === '0') return;
+        const age = parseInt(inp.dataset.age,10);
+        const val = toNumber(inp.value, NaN);
+        if (Number.isFinite(val) && val>0) points.push({age, y: val});
+      });
+      if (points.length < 2) {
+        const { baseAge, startIncome, growthPct } = baseIncomeParams(target);
+        const g = growthPct/100;
+        inputs.forEach(inp=>{
+          if (inp.value !== '') return;
+          const t = parseInt(inp.dataset.age,10) - baseAge;
+          inp.value = Math.round(startIncome * Math.pow(1+g, t));
+        });
+        return;
+      }
+      const minAge = Math.min(...points.map(p=>p.age));
+      const xs = points.map(p=>p.age - minAge);
+      const ys = points.map(p=>Math.log(p.y));
+      const n = xs.length;
+      const sumX = xs.reduce((a,b)=>a+b,0);
+      const sumY = ys.reduce((a,b)=>a+b,0);
+      const sumXX = xs.reduce((a,b)=>a+b*b,0);
+      const sumXY = xs.reduce((a,xi,i)=>a+xi*ys[i],0);
+      const denom = (n*sumXX - sumX*sumX) || 1;
+      const slope = (n*sumXY - sumX*sumY)/denom;
+      const intercept = (sumY - slope*sumX)/n;
+      const r = Math.exp(slope) - 1;
+      const rAdj = Math.max(-0.05, Math.min(0.08, 0.8*r));
+      inputs.forEach(inp=>{
+        if (inp.value === '0') return;
+        if (keepFilled && inp.value !== '') return;
+        const age = parseInt(inp.dataset.age,10);
+        const t = age - minAge;
+        const y = Math.exp(intercept + Math.log(1+rAdj)*t);
+        inp.value = Math.round(y);
+      });
+    }
+    document.getElementById('detectAndFillBtn').addEventListener('click', ()=>{
+      detectAndFill(document.getElementById('incomeTarget').value, false);
+      alert('控えめの自動補正で再計算しました。');
+    });
+    document.getElementById('applyIncomeBtn').addEventListener('click', ()=>{
+      const target = document.getElementById('incomeTarget').value;
+      const data = [];
+      document.querySelectorAll('#incomeCustomBody input').forEach(inp=>{
+        if (inp.value === '') return;
+        const age = parseInt(inp.dataset.age,10);
+        const salary = toNumber(inp.value, 0);
+        data.push({ age, salary });
+      });
+      document.getElementById(getCustomIncomeStoreKey(target)).value = JSON.stringify(data);
+      document.getElementById('incomeModal').classList.remove('show');
+    });
+    document.getElementById('clearIncomeCustomBtn').addEventListener('click', ()=>{
+      const target = document.getElementById('incomeTarget').value;
+      document.getElementById(getCustomIncomeStoreKey(target)).value = '[]';
+      buildIncomeCustomTable();
+    });
+    document.getElementById('openIncomeBtn').addEventListener('click', ()=>{ document.getElementById('incomeTarget').value = 'self'; buildIncomeCustomTable(); });
+    document.getElementById('openSpouseCustomFromSettings').addEventListener('click', ()=>{
+      document.getElementById('spouseIncomeModal').classList.remove('show');
+      document.getElementById('incomeTarget').value = 'spouse';
+      buildIncomeCustomTable();
+      document.getElementById('incomeModal').classList.add('show');
+    });
+    document.getElementById('openSpouseIncomeSettingsBtn').addEventListener('click', ()=>{
+      const s = safeJSONParse(document.getElementById('spouseIncomeSettings').value, {incomeStart:0,incomeGrowthPct:0,retireAge:65,retirementBonus:0});
+      document.getElementById('spIncomeStart').value = s.incomeStart;
+      document.getElementById('spIncomeGrowth').value = s.incomeGrowthPct;
+      document.getElementById('spRetireAge').value = s.retireAge;
+      document.getElementById('spRetirementBonus').value = s.retirementBonus;
+    });
+    document.getElementById('applySpouseIncomeSettingsBtn').addEventListener('click', ()=>{
+      const data = {
+        incomeStart: toNumber(document.getElementById('spIncomeStart').value, 0),
+        incomeGrowthPct: toNumber(document.getElementById('spIncomeGrowth').value, 0),
+        retireAge: toNumber(document.getElementById('spRetireAge').value, 65),
+        retirementBonus: toNumber(document.getElementById('spRetirementBonus').value, 0)
+      };
+      document.getElementById('spouseIncomeSettings').value = JSON.stringify(data);
+      document.getElementById('spouseIncomeModal').classList.remove('show');
+    });
+    let chartInstance = null;
+    let insuranceChartInstance = null;
+    let lastSimulation = null;
+    const assetAnalysisBtn = document.getElementById('assetAnalysisBtn');
+    const insuranceBtn = document.getElementById('insuranceBtn');
+    document.getElementById('resetZoomBtn').addEventListener('click', () => {
+      chartInstance?.resetZoom();
+    });
+    document.getElementById('zoomInBtn')?.addEventListener('click', ()=>{ chartInstance?.zoom(1.1); });
+    document.getElementById('zoomOutBtn')?.addEventListener('click', ()=>{ chartInstance?.zoom(0.9); });
+    function buildParamsFromForm(form){
+      syncSelfToFamily();
+      const familyConfig = safeJSONParse(document.getElementById('familyConfig').value, {});
+      return {
+        selfName: familyConfig.self?.name || '本人',
+        incomeStart: toNumber(form.incomeStart.value, 0),
+        incomeGrowthPct: toNumber(form.incomeGrowth.value, 0),
+        retireAge: toNumber(form.retireAge.value, 65),
+        retirementBonus: toNumber(form.retirementBonus.value, 0),
+        livingMonthly: toNumber(form.livingCost.value, 0),
+        inflationPct: toNumber(form.inflation.value, 0),
+        initialCash: toNumber(form.initialCash.value, 0),
+        assetConfig: safeJSONParse(document.getElementById('assetConfig').value, []),
+        housingConfig: safeJSONParse(document.getElementById('housingConfig').value, []),
+        planConfig: safeJSONParse(document.getElementById('planConfig').value, []),
+        educationConfig: safeJSONParse(document.getElementById('educationConfig').value, []),
+        customIncomeSelf: safeJSONParse(document.getElementById('customIncomeConfig').value, []),
+        customIncomeSpouse: safeJSONParse(document.getElementById('customIncomeConfigSpouse').value, []),
+        family: familyConfig,
+        spouseIncomeSettings: safeJSONParse(document.getElementById('spouseIncomeSettings').value, {incomeStart:0,incomeGrowthPct:0,retireAge:65,retirementBonus:0}),
+        pensionConfig: safeJSONParse(document.getElementById('pensionConfig').value, {selfAvgMonthly:30, spouseAvgMonthly:0}),
+        dcConfig: safeJSONParse(document.getElementById('dcConfig').value, {}),
+      };
+    }
+    function runSimulation(params, options = { useVolatility: false }){
+      const {
+        selfName, incomeStart, incomeGrowthPct, retireAge, retirementBonus, livingMonthly,
+        inflationPct, initialCash, assetConfig, housingConfig, planConfig, educationConfig,
+        customIncomeSelf, customIncomeSpouse, family, spouseIncomeSettings, pensionConfig, dcConfig
+      } = params;
+      const selfAge = toNumber(family?.self?.age, 30);
+      if (selfAge >= 100) {
+        alert("シミュレーション開始年齢は100歳未満に設定してください。");
+        return null;
+      }
+      const spouseAgeVal = toNumber(family?.spouse?.age, NaN);
+      const hasValidSpouseAge = Number.isFinite(spouseAgeVal) && spouseAgeVal > 0;
+      const spouseAgeBase = hasValidSpouseAge ? spouseAgeVal : NaN;
+      const years = 100 - selfAge + 1;
+      const labels = [];
+      const salarySelf = []; const salarySpouse = []; const bonusSelf = []; const bonusSpouse = []; const pensionSelf = []; const pensionSpouse = []; const otherIncome = [];
+      const assetTakeouts = Array(years).fill(0);
+      const notifications = []; const savingData = []; const withdrawData = [];
+      const infl = inflationPct / 100;
+      const gSelf = incomeGrowthPct / 100;
+
+      const dcData = [];
+      const dcAnnualIndivCost = (dcConfig.indiv / 10000) * 12 || 0;
+      const dcAnnualCorpContrib = (dcConfig.corp / 10000) * 12 || 0;
+      const dcRate = (dcConfig.rate || 3) / 100;
+      let dcBalance = dcConfig.initial || 0;
+
+      for (let i=0;i<years;i++){
+        const age = selfAge + i; labels.push(`${age}歳`);
+        const base = age <= retireAge ? Math.floor(incomeStart * Math.pow(1 + gSelf, i)) : 0;
+        salarySelf.push(age <= retireAge ? base : 0);
+        bonusSelf.push(age === retireAge ? retirementBonus : 0);
+        pensionSelf.push(0); pensionSpouse.push(0); otherIncome.push(0);
+      }
+      if (Array.isArray(customIncomeSelf) && customIncomeSelf.length){
+        const map = new Map(customIncomeSelf.map(e => [e.age, e.salary]));
+        for (let i=0;i<years;i++){ const age = selfAge + i; if (map.has(age)) salarySelf[i] = map.get(age); }
+      }
+      const KOSEI_NENKIN_RATE = 5.481 / 1000;
+      const KISO_NENKIN_ANNUAL = 78;
+      const selfPensionAnnual = Math.floor(toNumber(pensionConfig?.selfAvgMonthly, 30) * KOSEI_NENKIN_RATE * 480 + KISO_NENKIN_ANNUAL);
+      for (let i=0;i<years;i++){ const age=selfAge+i; if (age >= 65) pensionSelf[i]=selfPensionAnnual; }
+      const sp = spouseIncomeSettings || {incomeStart:0,incomeGrowthPct:0,retireAge:65,retirementBonus:0};
+      const gSp = toNumber(sp.incomeGrowthPct, 0) / 100;
+      if (hasValidSpouseAge) {
+        for (let i=0;i<years;i++){
+          const ageSp = spouseAgeBase + i;
+          const spRetireAge = toNumber(sp.retireAge, 65);
+          const retired = ageSp > spRetireAge;
+          const base = (!retired) ? Math.floor(toNumber(sp.incomeStart,0) * Math.pow(1+gSp, i)) : 0;
+          salarySpouse.push(retired ? 0 : base);
+          bonusSpouse.push(ageSp === spRetireAge ? toNumber(sp.retirementBonus,0) : 0);
+        }
+        if (Array.isArray(customIncomeSpouse) && customIncomeSpouse.length){
+          const map = new Map(customIncomeSpouse.map(e => [e.age, e.salary]));
+          for (let i=0;i<years;i++){ const ageSp = spouseAgeBase + i; if (map.has(ageSp)) salarySpouse[i] = map.get(ageSp); }
+        }
+        const spousePensionAnnual = Math.floor(toNumber(pensionConfig?.spouseAvgMonthly, 0) * KOSEI_NENKIN_RATE * 480 + KISO_NENKIN_ANNUAL);
+        for (let i=0;i<years;i++){ const ageSp = spouseAgeBase+i; if (ageSp >= 65) pensionSpouse[i]=spousePensionAnnual; }
+      } else {
+        for (let i=0;i<years;i++){ salarySpouse.push(0); bonusSpouse.push(0); }
+      }
+      let childBenefitNotified = false;
+      (family.children || []).forEach(child => {
+        for (let i = 0; i < years; i++) {
+            const childAge = child.age + i;
+            if (childAge >= 0 && childAge < 15) {
+                otherIncome[i] += 12;
+                if (!childBenefitNotified) {
+                    notifications.push({ age: selfAge + i, type: 'success', message: `💡 ${selfAge + i}歳から児童手当（年間12万円）が計上されます。` });
+                    childBenefitNotified = true;
+                }
+            }
+        }
+      });
+      (planConfig || []).forEach(p => {
+          if (p.name.includes('出産')) {
+              const yearIndex = p.age - selfAge;
+              if (yearIndex >= 0 && yearIndex < years) {
+                  otherIncome[yearIndex] += 50;
+                  notifications.push({ age: p.age, type: 'success', message: `💡 ${p.age}歳に出産一時金（50万円）が計上されます。` });
+              }
+          }
+      });
+      const taxData = []; const socialSalaryData = []; const pensionSocialData = []; const totalIncome = [];
+      for (let i=0;i<years;i++){
+        if(selfAge + i === retireAge) {
+          bonusSelf[i] += dcBalance;
+          dcBalance = 0;
+        }
+        const totalPension = pensionSelf[i] + pensionSpouse[i];
+        const salBonusSelf = salarySelf[i] + bonusSelf[i];
+        const salBonusSp = (salarySpouse[i]||0) + (bonusSpouse[i]||0);
+        const { tax: taxSelf, social: socialSelf } = calcSalaryTaxAndSocial(salBonusSelf);
+        const { tax: taxSp, social: socialSp } = calcSalaryTaxAndSocial(salBonusSp);
+        const { tax: penTax, social: penSocial } = calcPensionTaxAndSocial(totalPension);
+        taxData.push(taxSelf + taxSp + penTax);
+        socialSalaryData.push(socialSelf + socialSp);
+        pensionSocialData.push(penSocial);
+        totalIncome.push(salarySelf[i] + (salarySpouse[i]||0) + totalPension + otherIncome[i] + bonusSelf[i] + (bonusSpouse[i]||0));
+      }
+      const livingData = Array.from({length:years}, (_,i)=> Math.floor(livingMonthly * 12 * Math.pow(1 + infl, i)));
+      const housingData = [];
+      for (let i=0;i<years;i++){
+        const age = selfAge + i; let housing=0;
+        (housingConfig||[]).forEach(cfg=>{
+          const occ = cfg.occStart!=null && cfg.occEnd!=null ? (age >= cfg.occStart && age <= cfg.occEnd) : false;
+          if (cfg.type === 'rent') { if (occ) housing += (cfg.monthly||0)*12; }
+          else if (cfg.type === 'loan') {
+            const inRepay = (cfg.repayStart!=null && cfg.repayEnd!=null) ? (age >= cfg.repayStart && age <= cfg.repayEnd) : false;
+            if (inRepay) housing += (cfg.resolvedMonthly||0)*12;
+            if (occ) housing += (cfg.maintMonthly||0)*12;
+          }
+        });
+        housingData.push(Math.floor(housing));
+      }
+      const educationData = [];
+      const eduConfigMap = new Map((educationConfig || []).map(item => [item.name, item]));
+      for (let i=0;i<years;i++){
+        let education=0;
+        (family.children || []).forEach(child=>{
+          const childAge = child.age + i;
+          const childEdu = eduConfigMap.get(child.name) || {};
+          if (childAge >= 6 && childAge <= 11) education += toNumber(childEdu.elementary);
+          else if (childAge >= 12 && childAge <= 14) education += toNumber(childEdu.junior);
+          else if (childAge >= 15 && childAge <= 17) education += toNumber(childEdu.high);
+          else if (childAge >= 18 && childAge <= 21) education += toNumber(childEdu.university);
+          if (childAge >= 0 && childAge <= 21) education += toNumber(childEdu.other);
+        });
+        educationData.push(Math.floor(education));
+      }
+      const planData = [];
+      for (let i=0;i<years;i++){
+        const age = selfAge + i; let plan=0;
+        (planConfig||[]).forEach(p=>{
+          let shouldPay = false;
+          if (p.repeat==='once') shouldPay = (age===p.age);
+          else if (p.repeat==='yearly') shouldPay = (age>=p.age && age<=p.endAge);
+          else if (p.repeat==='5years') shouldPay = (age>=p.age && age<=p.endAge && (age-p.age)%5===0);
+          else if (p.repeat==='10years') shouldPay = (age>=p.age && age<=p.endAge && (age-p.age)%10===0);
+          if (shouldPay) plan += p.amount;
+        });
+        planData.push(Math.floor(plan));
+      }
+      const assetBalances = (assetConfig||[]).map(cfg => toNumber(cfg.initial, 0));
+      const investHistory = []; const cashHistory = []; const annualNetData = [];
+      let cashBalance = initialCash;
+      for (let i=0;i<years;i++){
+        const age = selfAge + i;
+
+        if (age < retireAge) {
+            dcBalance *= (1 + dcRate);
+            dcBalance += dcAnnualIndivCost + dcAnnualCorpContrib;
+        }
+        dcData.push(Math.floor(dcBalance));
+
+        let totalPlannedInvestment = 0;
+        (assetConfig||[]).forEach((cfg, idx)=>{
+          const end = toNumber(cfg.end, 0);
+          const meanRate = toNumber(cfg.rate, 0) / 100;
+          const stdev = toNumber(cfg.stdev, 15) / 100;
+          const takeoutMeanRate = toNumber(cfg.takeoutRate, 0) / 100;
+          let calculatedReturn = meanRate;
+          let calculatedTakeoutReturn = takeoutMeanRate;
+          if (options.useVolatility) {
+              calculatedReturn = randn_bm() * stdev + meanRate;
+              calculatedTakeoutReturn = randn_bm() * (stdev * 0.5) + takeoutMeanRate; 
+          }
+          if (age <= end) { 
+              const start = toNumber(cfg.start, 0);
+              const amount = toNumber(cfg.amount, 0);
+              if (age >= start && amount > 0){
+                  totalPlannedInvestment += amount;
+                  assetBalances[idx] += amount;
+              }
+             assetBalances[idx] *= (1 + calculatedReturn);
+          } else { 
+              assetBalances[idx] *= (1 + calculatedTakeoutReturn);
+              const takeoutType = cfg.takeoutType || 'lumpSum';
+              if (takeoutType === 'lumpSum') {
+                  if (age === end + 1 && assetBalances[idx] > 0) {
+                      assetTakeouts[i] += assetBalances[idx];
+                      assetBalances[idx] = 0;
+                  }
+              } else if (takeoutType === 'division') {
+                  const takeoutAmount = toNumber(cfg.takeoutAmount, 0);
+                  if (takeoutAmount > 0 && assetBalances[idx] > 0) {
+                      const actualTakeout = Math.min(assetBalances[idx], takeoutAmount);
+                      assetTakeouts[i] += actualTakeout;
+                      assetBalances[idx] -= actualTakeout;
+                  }
+              }
+          }
+        });
+        savingData.push(Math.floor(totalPlannedInvestment));
+        const income = totalIncome[i] + assetTakeouts[i];
+        totalIncome[i] = income; 
+        const outflow = livingData[i] + housingData[i] + educationData[i] + planData[i] + taxData[i] + socialSalaryData[i] + pensionSocialData[i] + totalPlannedInvestment + (age < retireAge ? dcAnnualIndivCost : 0);
+        const annualNet = income - outflow; annualNetData.push(Math.floor(annualNet));
+        cashBalance += annualNet;
+        let withdrawn = 0;
+        if (cashBalance < 0) {
+          const deficit = -cashBalance;
+          const totalAssets = assetBalances.reduce((a,b)=>a+b,0);
+          if (totalAssets > 0) {
+            const cover = Math.min(deficit, totalAssets);
+            assetBalances.forEach((bal, idx)=>{
+              const share = totalAssets>0 ? (bal/totalAssets)*cover : 0;
+              assetBalances[idx] = bal - share;
+            });
+            cashBalance += cover; withdrawn = cover;
+            if (!notifications.some(n => n.type === 'warning' && n.message.includes('資産の取り崩し'))) {
+                 notifications.push({ age: age, type: 'warning', message: `⚠️ ${age}歳頃から資産の取り崩しが発生します。` });
+            }
+          }
+        }
+        withdrawData.push(Math.floor(withdrawn));
+        cashHistory.push(Math.floor(cashBalance));
+        investHistory.push(Math.floor(assetBalances.reduce((a,b)=>a+b,0) + dcData[i]));
+      }
+      const fam = family || {}; const persons = [];
+      if (fam.self?.name) persons.push({label:`本人(${fam.self.name})`, baseAge: toNumber(fam.self.age,0)});
+      if (fam.spouse?.name) persons.push({label:`配偶者(${fam.spouse.name})`, baseAge: toNumber(fam.spouse.age,0)});
+      (fam.children||[]).forEach((c)=>{ if (c?.name) persons.push({label:`子(${c.name})`, baseAge: toNumber(c.age,0)}); });
+      if (fam.selfParents?.[0]?.name) persons.push({label:`父(本人)`, baseAge: toNumber(fam.selfParents[0].age,0)});
+      if (fam.selfParents?.[1]?.name) persons.push({label:`母(本人)`, baseAge: toNumber(fam.selfParents[1].age,0)});
+      if (fam.spouseParents?.[0]?.name) persons.push({label:`父(配偶者)`, baseAge: toNumber(fam.spouseParents[0].age,0)});
+      if (fam.spouseParents?.[1]?.name) persons.push({label:`母(配偶者)`, baseAge: toNumber(fam.spouseParents[1].age,0)});
+      const familyAgeSeries = [];
+      for (let i=0;i<years;i++){ const row = { age: selfAge + i }; persons.forEach(p=> row[p.label] = p.baseAge + i); familyAgeSeries.push(row); }
+      const totalPensionData = pensionSelf.map((p, i) => p + (pensionSpouse[i] || 0));
+      return {
+        years, labels,
+        salarySelf, salarySpouse, bonusSelf, bonusSpouse, pensionSelf, totalPensionData, childBenefitData: otherIncome,
+        assetTakeouts, notifications,
+        totalIncome, taxData, socialSalaryData, pensionSocialData,
+        livingData, housingData, educationData, planData,
+        savingData, withdrawData,
+        annualNetData, cashHistory, investHistory,
+        familyAgeSeries, familyPersons: persons,
+        dcData,
+        meta: { selfName, selfAge, retireAge }
+      };
+    }
+    document.getElementById('runSimBtn').addEventListener('click', function(){
+      const resultsContent = document.getElementById('results-content');
+      const loadingIndicator = document.getElementById('results-loading');
+      resultsContent.classList.add('hidden');
+      loadingIndicator.style.display = 'flex';
+      setTimeout(() => {
+        try {
+          const form = document.getElementById('lifePlanForm');
+          const params = buildParamsFromForm(form);
+          const sim = runSimulation(params);
+          if (!sim) {
+            loadingIndicator.style.display = 'none';
+            return;
+          }
+          if (chartInstance) {
+              chartInstance.destroy();
+          }
+          const ctx = document.getElementById('lifePlanChart').getContext('2d');
+          chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: sim.labels,
+              datasets: [
+                { label: '生活費', data: sim.livingData, backgroundColor: 'rgba(251,146,60,0.8)', stack: '支出', order: 2 },
+                { label: '住居費', data: sim.housingData, backgroundColor: 'rgba(245,158,11,0.8)', stack: '支出', order: 2 },
+                { label: '教育費', data: sim.educationData, backgroundColor: 'rgba(236,72,153,0.8)', stack: '支出', order: 2 },
+                { label: 'その他支出', data: sim.planData, backgroundColor: 'rgba(139,92,246,0.8)', stack: '支出', order: 2 },
+                { label: '税金', data: sim.taxData, backgroundColor: 'rgba(148,163,184,0.8)', stack: '支出', order: 2 },
+                { label: '社保（給与）', data: sim.socialSalaryData, backgroundColor: 'rgba(59,130,246,0.8)', stack: '支出', order: 2 },
+                { label: '社保（年金）', data: sim.pensionSocialData, backgroundColor: 'rgba(168,85,247,0.8)', stack: '支出', order: 2 },
+                { label: '金融資産積立', data: sim.savingData, backgroundColor: 'rgba(34,197,94,0.8)', stack: '支出', order: 2 },
+                { label: '資産取り崩し', data: sim.withdrawData, backgroundColor: 'rgba(239,68,68,0.6)', stack: '取り崩し', order: 2 },
+                { label: '年間収支', data: sim.annualNetData, type: 'line', borderColor: '#111827', backgroundColor: 'rgba(17,24,39,0.08)', pointRadius: 0, borderWidth: 2, borderDash: [6,3], fill: false, stepped: 'after', order: 1 },
+                { label: '総収入', data: sim.totalIncome, type: 'line', borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', pointRadius: 0, borderWidth: 3, fill: false, stepped: 'after', order: 1 },
+                { 
+                  label: '現預金残高', data: sim.cashHistory, type: 'line', borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', pointRadius: 0, borderWidth: 3, fill: false, stepped: 'after', order: 1,
+                  segment: { borderColor: ctx => (sim.withdrawData[ctx.p0DataIndex] > 0 || sim.withdrawData[ctx.p1DataIndex] > 0) ? '#ef4444' : undefined, },
+                },
+                { 
+                  label: '金融資産残高', data: sim.investHistory, type: 'line', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', pointRadius: 0, borderWidth: 3, fill: false, stepped: 'after', order: 1,
+                  segment: { borderColor: ctx => (sim.withdrawData[ctx.p0DataIndex] > 0 || sim.withdrawData[ctx.p1DataIndex] > 0) ? '#ef4444' : undefined, },
+                }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              animation: { duration: 1000, easing: 'easeInOutQuart' },
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                title: { display: true, text: `${params.selfName}さんの人生設計シミュレーション`, font: { size: 16, weight: 'bold' }, color: '#1e293b' },
+                tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(0,0,0,0.8)', padding: 12, bodySpacing: 6,
+                  callbacks: { label: (ctx)=> `${ctx.dataset.label || ''}: ${formatAmount(ctx.parsed.y||0)} 万円` } },
+                legend: { position: 'top', labels: { padding: 15, font: { size: 11 }, usePointStyle: true } },
+                zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: false }, mode: 'x', } }
+              },
+              scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                y: {
+                  beginAtZero: false, suggestedMin: -500,
+                  title: { display: true, text: '金額（万円）', font: { size: 13, weight: 'bold' } },
+                  ticks: { callback: (v)=> formatAmount(v), font: { size: 11 } },
+                  grid: { color: 'rgba(0,0,0,0.05)' }
+                }
+              }
+            }
+          });
+          const selfPerson = sim.familyPersons.find(p => p.label.startsWith('本人'));
+          const spouse = sim.familyPersons.find(p => p.label.startsWith('配偶者'));
+          const children = sim.familyPersons.filter(p => p.label.startsWith('子('));
+          const parents = sim.familyPersons.filter(p => p.label.startsWith('父(') || p.label.startsWith('母('));
+          const orderedFamily = [spouse, ...children, ...parents].filter(p => p);
+          const thead = document.querySelector('#resultTable thead');
+          let headerHTML = '<tr><th class="age-col">年齢</th>';
+          if (selfPerson) headerHTML += `<th class="age-col">${selfPerson.label}</th>`;
+          orderedFamily.forEach(p => { headerHTML += `<th class="age-col">${p.label}</th>`; });
+          headerHTML += '<th>給与(本人)</th><th>給与(配偶者)</th><th>こども関連手当</th><th>年金収入</th><th>資産受取</th><th>退職金</th><th>総収入</th><th>年間収支</th><th>生活費</th><th>住居費</th><th>教育費</th><th>その他支出</th><th>税金</th><th>社保(給与)</th><th>社保(年金)</th><th>積立額</th><th>資産取り崩し</th><th>現預金</th><th>金融資産</th></tr>';
+          thead.innerHTML = headerHTML;
+          const incomeTbody = document.querySelector('#incomeTable tbody');
+          incomeTbody.innerHTML = '';
+          for (let i=0;i<sim.years;i++){
+            const age = sim.meta.selfAge + i;
+            incomeTbody.insertAdjacentHTML('beforeend', `
+              <tr>
+                <td>${age}歳</td>
+                <td>${formatAmount(sim.salarySelf[i])}</td>
+                <td>${formatAmount(sim.salarySpouse[i]||0)}</td>
+                <td>${formatAmount(sim.childBenefitData[i])}</td>
+                <td>${formatAmount(sim.totalPensionData[i])}</td>
+                <td>${formatAmount(sim.bonusSelf[i] + (sim.bonusSpouse[i]||0))}</td>
+                <td>${formatAmount(sim.assetTakeouts[i])}</td>
+                <td>${formatAmount(sim.totalIncome[i])}</td>
+              </tr>
+            `);
+          }
+          const tbody = document.querySelector('#resultTable tbody');
+          tbody.innerHTML = '';
+          for (let i=0;i<sim.years;i++){
+            const age = sim.meta.selfAge + i; 
+            const ageDataRow = sim.familyAgeSeries[i];
+            const negClass = sim.annualNetData[i] < 0 ? ' class="neg"' : '';
+            let rowHTML = `<tr${negClass}><td class="age-col">${age}歳</td>`;
+            if (selfPerson) rowHTML += `<td class="age-col">${ageDataRow[selfPerson.label] || ''}</td>`;
+            orderedFamily.forEach(p => { rowHTML += `<td class="age-col">${ageDataRow[p.label] || ''}</td>`; });
+            rowHTML += `
+              <td>${formatAmount(sim.salarySelf[i])}</td>
+              <td>${formatAmount(sim.salarySpouse[i]||0)}</td>
+              <td>${formatAmount(sim.childBenefitData[i])}</td>
+              <td>${formatAmount(sim.totalPensionData[i])}</td>
+              <td>${formatAmount(sim.assetTakeouts[i])}</td>
+              <td>${formatAmount(sim.bonusSelf[i] + (sim.bonusSpouse[i]||0))}</td>
+              <td>${formatAmount(sim.totalIncome[i])}</td>
+              <td>${formatAmount(sim.annualNetData[i])}</td>
+              <td>${formatAmount(sim.livingData[i])}</td>
+              <td>${formatAmount(sim.housingData[i])}</td>
+              <td>${formatAmount(sim.educationData[i])}</td>
+              <td>${formatAmount(sim.planData[i])}</td>
+              <td>${formatAmount(sim.taxData[i])}</td>
+              <td>${formatAmount(sim.socialSalaryData[i])}</td>
+              <td>${formatAmount(sim.pensionSocialData[i])}</td>
+              <td>${formatAmount(sim.savingData[i])}</td>
+              <td>${formatAmount(sim.withdrawData[i])}</td>
+              <td>${formatAmount(sim.cashHistory[i])}</td>
+              <td>${formatAmount(sim.investHistory[i])}</td>
+            </tr>`;
+            tbody.insertAdjacentHTML('beforeend', rowHTML);
+          }
+          lastSimulation = sim;
+          assetAnalysisBtn.disabled = false;
+          insuranceBtn.disabled = false;
+          const notificationArea = document.getElementById('notificationArea');
+          notificationArea.innerHTML = '';
+          if(sim.notifications.length > 0) {
+              sim.notifications
+                  .sort((a,b) => a.age - b.age)
+                  .forEach(n => {
+                      const li = document.createElement('li');
+                      li.className = `notification ${n.type}`;
+                      li.textContent = n.message;
+                      notificationArea.appendChild(li);
+                  });
+          }
+          const timelineData = generateTimelineData(params);
+          renderTimeline(timelineData);
+          document.getElementById('summary-placeholder').style.display = 'none';
+        } catch (error) {
+          console.error("シミュレーション中にエラーが発生しました:", error);
+          alert("シミュレーションの実行中に予期せぬエラーが発生しました。入力内容を確認するか、ページを再読み込みしてください。");
+        } finally {
+            loadingIndicator.style.display = 'none';
+            resultsContent.classList.remove('hidden');
+            resultsContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
+    });
+    
+    function generateTimelineData(params) {
+        const timelineData = { '本人': [], '配偶者': [], 'ライフ': [], '住居': [], '資産': [] };
+        const selfAge = toNumber(params.family?.self?.age, 30);
+        
+        (params.family.children || []).forEach(child => {
+            const key = `子ども-${child.name}`;
+            if(!timelineData[key]) timelineData[key] = [];
+        });
+
+        function addEvent(category, startAge, endAge, text, icon = '') {
+            if (!timelineData[category] || !startAge) return;
+            endAge = endAge || startAge;
+            timelineData[category].push({ start: startAge, end: endAge, text, icon });
+        }
+
+        const { family, retireAge, retirementBonus, planConfig, housingConfig, assetConfig, spouseIncomeSettings } = params;
+
+        addEvent('本人', retireAge, retireAge, `退職 & 退職金`, '👋');
+        if ((family?.spouse?.age || 0) > 0) {
+            const spouseRetireAge = spouseIncomeSettings?.retireAge || 65;
+            const selfAgeAtSpouseRetire = selfAge + (spouseRetireAge - family.spouse.age);
+            addEvent('配偶者', selfAgeAtSpouseRetire, selfAgeAtSpouseRetire, '退職', '👋');
+        }
+        
+        (family.children || []).forEach(child => {
+            const key = `子ども-${child.name}`;
+            const birthAge = selfAge - child.age;
+            addEvent(key, birthAge, birthAge, `${child.name} 誕生`, '👶');
+            addEvent(key, birthAge + 6, birthAge + 6, `小学校入学`, '🎒');
+            addEvent(key, birthAge + 12, birthAge + 12, `中学校入学`, '🧑‍🏫');
+            addEvent(key, birthAge + 15, birthAge + 15, `高校入学`, '🎓');
+            addEvent(key, birthAge + 18, birthAge + 18, `大学入学`, '🏫');
+        });
+
+        (planConfig || []).forEach(plan => {
+            const icon = plan.name.includes('車') ? '🚗' : '🎉';
+            addEvent('ライフ', plan.age, plan.repeat === 'once' ? plan.age : plan.endAge, `${plan.name} (${plan.amount}万円)`, icon);
+        });
+
+        (housingConfig || []).forEach(house => {
+            const icon = house.type === 'loan' ? '🏠' : '🏢';
+            addEvent('住居', house.occStart, house.occEnd < 100 ? house.occEnd : 100, `${house.name} 居住`, icon);
+            if (house.type === 'loan' && house.repayStart && house.repayEnd) {
+                addEvent('住居', house.repayStart, house.repayEnd, 'ローン返済', '💳');
+            }
+        });
+        
+        (assetConfig || []).forEach(asset => {
+            addEvent('資産', asset.start, asset.end, `${asset.name} 積立`, '📈');
+            const takeoutStart = asset.end > 0 ? asset.end + 1 : selfAge;
+            const takeoutEnd = asset.takeoutType === 'lumpSum' ? takeoutStart : (takeoutStart + 10);
+            addEvent('資産', takeoutStart, takeoutEnd, `${asset.name} 受取`, '💰');
+        });
+
+        return timelineData;
+    }
+
+    function renderTimeline(timelineData) {
+        const container = document.getElementById('lifePlanTimeline');
+        const params = buildParamsFromForm(document.getElementById('lifePlanForm'));
+        const startAge = toNumber(params.family?.self?.age, 30);
+        const endAge = 100;
+        const yearWidth = 50;
+        const totalWidth = (endAge - startAge + 1) * yearWidth;
+        
+        let headerHtml = '';
+        for (let age = startAge; age <= endAge; age++) {
+            headerHtml += `<div class="gantt-year-marker">${age}歳</div>`;
+        }
+
+        let labelsHtml = '';
+        let rowsHtml = '';
+        
+        const dynamicCategories = Object.keys(timelineData);
+
+        dynamicCategories.forEach(key => {
+            if (timelineData[key] && timelineData[key].length > 0) {
+                const label = key.startsWith('子ども-') ? `子(${key.replace('子ども-', '')})` : key;
+                labelsHtml += `<div class="gantt-category-label">${label}</div>`;
+                
+                let eventsHtml = '';
+                timelineData[key].forEach(event => {
+                    const left = (event.start - startAge) * yearWidth;
+                    const effectiveEnd = Math.min(event.end, endAge);
+                    const width = (effectiveEnd - event.start + 1) * yearWidth - 4;
+                    
+                    if (width > 0) {
+                      eventsHtml += `
+                          <div class="gantt-event" style="left: ${left}px; width: ${width}px;" title="${event.text} (${event.start}歳〜${event.end}歳)" data-category="${key}">
+                              <span class="gantt-event-icon">${event.icon}</span>
+                              <span class="gantt-event-text">${event.text}</span>
+                          </div>
+                      `;
+                    }
+                });
+                rowsHtml += `<div class="gantt-row">${eventsHtml}</div>`;
+            }
+        });
+
+        if (!rowsHtml) {
+            container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">表示できるライフイベントがありません。</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="gantt-chart-container" style="width: ${totalWidth + 150}px;">
+                <div class="gantt-header">${headerHtml}</div>
+                <div class="gantt-category-labels">${labelsHtml}</div>
+                <div class="gantt-rows">${rowsHtml}</div>
+            </div>
+        `;
+
+        container.querySelector('.gantt-rows').addEventListener('click', (e) => {
+            const eventEl = e.target.closest('.gantt-event');
+            if (eventEl && eventEl.title) {
+                alert(eventEl.title);
+            }
+        });
+    }
+    
+    function getPlanData() {
+        const data = {};
+        const fields = [
+            'selfName', 'selfAge', 'initialCash', 'incomeStart', 'incomeGrowth', 'retireAge', 'retirementBonus', 'livingCost', 'inflation',
+            'assetConfig', 'housingConfig', 'planConfig', 'educationConfig', 'customIncomeConfig', 'customIncomeConfigSpouse', 'familyConfig', 'spouseIncomeSettings', 'pensionConfig', 'dcConfig'
+        ];
+        fields.forEach(fieldName => {
+            const input = document.querySelector(`[name="${fieldName}"]`);
+            if (input) data[fieldName] = input.value;
+        });
+        return data;
+    }
+    function setPlanData(data) {
+        Object.keys(data).forEach(fieldName => {
+            const input = document.querySelector(`[name="${fieldName}"]`);
+            if (input) {
+                if (fieldName === 'familyConfig' && typeof data[fieldName] === 'object') {
+                    input.value = JSON.stringify(data[fieldName]);
+                } else {
+                    input.value = data[fieldName];
+                }
+            }
+        });
+        syncFamilyToSelf();
+    }
+    document.getElementById('saveBtn').addEventListener('click', () => {
+        const planData = getPlanData();
+        const jsonString = JSON.stringify(planData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mirai-compass-plan.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('設定をファイルに保存しました。');
+    });
+    const fileInput = document.getElementById('fileInput');
+    document.getElementById('loadBtn').addEventListener('click', () => {
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const loadedData = JSON.parse(e.target.result);
+                if (loadedData.familyConfig && loadedData.pensionConfig) {
+                    setPlanData(loadedData);
+                    alert('データの読み込みが完了しました。');
+                } else {
+                    alert('無効なファイル形式です。');
+                }
+            } catch (error) {
+                console.error("ファイルの読み込みに失敗しました:", error);
+                alert('ファイルの読み込みに失敗しました。有効なJSONファイルを選択してください。');
+            }
+        };
+        reader.readAsText(file);
+        fileInput.value = '';
+    });
+    
+    document.getElementById('assetAnalysisBtn').addEventListener('click', () => { 
+        if (!lastSimulation) {
+            alert('先に「シミュレーション実行」を押してください。');
+            return;
+        }
+        
+        document.querySelector('.tab-button[data-tab="tab-summary"]')?.click();
+        document.getElementById('summary-placeholder').style.display = 'none';
+
+        const resultDiv = document.getElementById('riskResult');
+        resultDiv.innerHTML = '🩺 あなたのプランを健康診断中...';
+        resultDiv.style.display = 'block';
+        resultDiv.classList.remove('positive');
+
+        setTimeout(() => {
+            try {
+                const originalParams = buildParamsFromForm(document.getElementById('lifePlanForm'));
+                const baseSim = lastSimulation; 
+                const baseAssets = (baseSim.cashHistory.at(-1) || 0) + (baseSim.investHistory.at(-1) || 0);
+
+                let reportHTML = '<h2 style="text-align: center; color: var(--primary-color-start);">🩺 あなたのプラン 健康診断レポート</h2>';
+
+                let firstDeficitAge = -1;
+                let maxDeficit = 0;
+                for (let i = 0; i < baseSim.cashHistory.length; i++) {
+                    if (baseSim.cashHistory[i] < 0) {
+                        if (firstDeficitAge === -1) firstDeficitAge = baseSim.meta.selfAge + i;
+                        maxDeficit = Math.min(maxDeficit, baseSim.cashHistory[i]);
+                    }
+                }
+
+                reportHTML += '<h3>1. 総合判定</h3>';
+                if (firstDeficitAge === -1) {
+                    reportHTML += `<p style="font-size: 1.1em; font-weight: bold; color: green;">
+                        ✅ 素晴らしいプランです！100歳まで資産がマイナスになることはありませんでした。
+                    </p>`;
+                    reportHTML += `<p>100歳時点の予測資産は <b>${formatAmount(baseAssets)} 万円</b>です。自信を持ってこのプランを進めましょう。</p>`;
+                    resultDiv.classList.add('positive');
+                } else {
+                    reportHTML += `<p style="font-size: 1.1em; font-weight: bold; color: red;">
+                        ⚠️ 注意！ ${firstDeficitAge}歳頃に資産がマイナスになる可能性があります。
+                    </p>`;
+                    reportHTML += `<p>最大で <b>${formatAmount(Math.abs(maxDeficit))} 万円</b> 不足する計算です。プランの見直しが必要です。</p>`;
+                }
+
+                reportHTML += '<hr><h3>2. あなたの生涯支出 TOP3（100歳まで）</h3>';
+                const totals = {
+                    living: baseSim.livingData.reduce((a, b) => a + b, 0),
+                    housing: baseSim.housingData.reduce((a, b) => a + b, 0),
+                    education: baseSim.educationData.reduce((a, b) => a + b, 0),
+                    taxSocial: baseSim.taxData.reduce((a, b) => a + b, 0) + baseSim.socialSalaryData.reduce((a, b) => a + b, 0) + baseSim.pensionSocialData.reduce((a, b) => a + b, 0),
+                    other: baseSim.planData.reduce((a, b) => a + b, 0) + baseSim.savingData.reduce((a, b) => a + b, 0)
+                };
+                const expenses = [
+                    { name: '① 生活費 (食費・光熱費など)', total: totals.living },
+                    { name: '② 住居費 (家賃・ローン・維持費)', total: totals.housing },
+                    { name: '③ 税金・社会保険料', total: totals.taxSocial },
+                    { name: '④ 教育費', total: totals.education },
+                    { name: '⑤ その他 (車・旅行・積立など)', total: totals.other }
+                ].filter(e => e.total > 0).sort((a, b) => b.total - a.total);
+
+                reportHTML += '<ol style="font-size: 1.1em; padding-left: 20px;">';
+                expenses.slice(0, 3).forEach(exp => {
+                    reportHTML += `<li style="margin-bottom: 8px;"><b>${exp.name}:</b> ${formatAmount(exp.total)} 万円</li>`;
+                });
+                reportHTML += '</ol>';
+
+                reportHTML += '<hr><h3>3. 家計の「余裕」と「正念場」</h3>';
+                const retireAge = originalParams.retireAge;
+                const selfAge = originalParams.family?.self?.age || 30;
+                const netData = baseSim.annualNetData; 
+                
+                const preRetirementNet = netData.slice(0, Math.max(1, retireAge - selfAge + 1));
+                const maxNet = Math.max(...preRetirementNet);
+                const maxNetAge = preRetirementNet.indexOf(maxNet) + selfAge;
+                
+                const minNet = Math.min(...netData);
+                const minNetAge = netData.indexOf(minNet) + selfAge;
+                
+                reportHTML += `<p>
+                    💰 <b>黄金期（貯蓄ピーク）: ${maxNetAge}歳頃</b><br>
+                    年間収支が <b>+${formatAmount(maxNet)} 万円</b> となり、最も貯蓄がはかどる時期です。収入が安定し、大きな支出が一段落する時期かもしれません。
+                </p>`;
+                reportHTML += `<p>
+                    🏋️ <b>正念場（支出ピーク）: ${minNetAge}歳頃</b><br>
+                    年間収支が <b>${formatAmount(minNet)} 万円</b> となり、最も家計が厳しい時期です。シミュレーション表で${minNetAge}歳を確認し、教育費や住宅ローン等の支出が重なっていないか確認しましょう。
+                </p>`;
+                
+                reportHTML += '<hr><h3>4. "もしも"の節約効果（チリツモ分析）</h3>';
+                
+                const latteParams = JSON.parse(JSON.stringify(originalParams));
+                latteParams.livingMonthly += 1; 
+                const latteSim = runSimulation(latteParams, { useVolatility: false }); 
+                const latteAssets = (latteSim.cashHistory.at(-1) || 0) + (latteSim.investHistory.at(-1) || 0);
+                const latteDiff = baseAssets - latteAssets; 
+
+                reportHTML += `<p>
+                    ☕️ もし、毎月の生活費を今より<b>1万円</b>節約（または支出増）した場合...<br>
+                    100歳時点の資産は <b>${formatAmount(latteDiff)} 万円</b> 変動します。
+                </p>`;
+                reportHTML += '<p>日々の小さな見直し（"ラテマネー"など）が、将来大きな差を生むことがわかります。</p>';
+
+                resultDiv.innerHTML = reportHTML;
+                resultDiv.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error("生活分析レポート作成中にエラーが発生しました:", error);
+                resultDiv.innerHTML = '分析中にエラーが発生しました。コンソールを確認してください。';
+            }
+        }, 100); 
+    });
+    
+    document.getElementById('closeInsuranceBtn').addEventListener('click', () => {
+        document.getElementById('insuranceChartContainer').style.display = 'none';
+        if(insuranceChartInstance) {
+            insuranceChartInstance.destroy();
+            insuranceChartInstance = null;
+        }
+    });
+
+    function renderInsuranceChart(labels, requiredData, insuranceData) {
+        const container = document.getElementById('insuranceChartContainer');
+        const ctx = document.getElementById('insuranceChart').getContext('2d');
+        if (insuranceChartInstance) {
+            insuranceChartInstance.destroy();
+        }
+        
+        insuranceChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '必要保障額',
+                        data: requiredData,
+                        borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true, stepped: 'after', order: 10
+                    },
+                    {
+                        label: '定期保険イメージ',
+                        data: insuranceData.term,
+                        borderColor: 'rgba(59, 130, 246, 0.8)', backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                        fill: true, stepped: true, hidden: true,
+                        borderDash: [5, 5]
+                    },
+                    {
+                        label: '収入保障保険イメージ',
+                        data: insuranceData.income,
+                        borderColor: 'rgba(245, 158, 11, 0.8)', backgroundColor: 'rgba(245, 158, 11, 0.3)',
+                        fill: true, hidden: true
+                    },
+                    {
+                        label: '終身保険イメージ',
+                        data: insuranceData.whole,
+                        borderColor: 'rgba(139, 92, 246, 0.8)', backgroundColor: 'rgba(139, 92, 246, 0.3)',
+                        fill: 'origin', hidden: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: '年齢別の必要保障額と保険イメージ', font: {size: 14} },
+                    legend: { position: 'bottom' },
+                    tooltip: { callbacks: { label: (ctx)=> ` ${ctx.dataset.label}: ${formatAmount(ctx.raw)} 万円` } }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '不足額（万円）' }, ticks: { callback: (v) => formatAmount(v) } },
+                    x: { title: { display: true, text: '万一発生時の年齢' } }
+                }
+            }
+        });
+        container.style.display = 'block';
+
+        document.querySelectorAll('.insurance-toggle').forEach(checkbox => {
+            let datasetIndex;
+            switch(checkbox.dataset.type){
+                case 'term': datasetIndex = 1; break;
+                case 'income': datasetIndex = 2; break;
+                case 'whole': datasetIndex = 3; break;
+            }
+
+            checkbox.onchange = (e) => {
+                if(datasetIndex !== undefined){
+                    insuranceChartInstance.setDatasetVisibility(datasetIndex, e.target.checked);
+                    insuranceChartInstance.update();
+                }
+            };
+            checkbox.checked = false;
+        });
+    }
+
+    document.getElementById('runInsuranceBtn').addEventListener('click', () => {
+        if (!lastSimulation) return;
+        
+        document.getElementById('insuranceIntroModal').classList.remove('show');
+        const btn = document.getElementById('runInsuranceBtn');
+        btn.disabled = true;
+        btn.textContent = '分析中...';
+        
+        setTimeout(() => {
+            const survivorRatio = toNumber(document.getElementById('survivorRatioInput').value, 70) / 100;
+            const pensionTerm = toNumber(document.getElementById('pensionTermInput').value, 10);
+            const params = buildParamsFromForm(document.getElementById('lifePlanForm'));
+            const sim = lastSimulation;
+            const selfAge = sim.meta.selfAge;
+            const includeAssets = document.getElementById('includeAssetsInInsuranceCalc').checked;
+            const chartLabels = []; const chartData = [];
+            let maxShortfall = -1; let maxRiskAge = selfAge;
+            
+            for(let deathAge = selfAge; deathAge <= params.retireAge; deathAge++) {
+                const deathYearIndex = deathAge - selfAge;
+                if (deathYearIndex < 0 || deathYearIndex >= sim.years) continue;
+                let cumulativeShortfall = 0;
+                let currentAssets = 0;
+                if(includeAssets){
+                    currentAssets = (sim.cashHistory[deathYearIndex] || 0) + (sim.investHistory[deathYearIndex] || 0);
+                }
+                let youngestChildIndependenceYearIndex = sim.years;
+                if(params.family.children && params.family.children.length > 0){
+                    const youngestChild = params.family.children.reduce((prev, curr) => (prev.age < curr.age) ? prev : curr);
+                    const independenceAge = 22;
+                    youngestChildIndependenceYearIndex = (independenceAge - youngestChild.age);
+                }
+                const endLoopYear = Math.min(sim.years, deathYearIndex + youngestChildIndependenceYearIndex);
+                for (let i = deathYearIndex + 1; i < endLoopYear; i++) {
+                    const survivorsPension = calculateSurvivorsPension(params, deathAge, pensionTerm, i);
+                    const income = (sim.salarySpouse[i]||0) + (sim.bonusSpouse[i]||0) + sim.childBenefitData[i] + survivorsPension;
+                    const outflow = sim.livingData[i] * survivorRatio + sim.housingData[i] + sim.educationData[i] + sim.planData[i] + sim.taxData[i] + sim.socialSalaryData[i] + sim.pensionSocialData[i] + sim.savingData[i];
+                    const net = income - outflow;
+                    currentAssets += net;
+                    if (currentAssets < 0) {
+                        cumulativeShortfall += Math.abs(currentAssets);
+                        currentAssets = 0;
+                    }
+                }
+                chartLabels.push(`${deathAge}歳`);
+                chartData.push(cumulativeShortfall);
+                if(cumulativeShortfall > maxShortfall) {
+                    maxShortfall = cumulativeShortfall;
+                    maxRiskAge = deathAge;
+                }
+            }
+            const resultDiv = document.getElementById('insuranceResult');
+            const assetNote = includeAssets
+                ? "<strong>計算にはその時点での資産残高（現預金・金融資産）を<span style='color:green;'>含めて</span>います。</strong>"
+                : "<strong>計算にはその時点での資産残高を<span style='color:red;'>含めていません</span>（資産ゼロを仮定）。</strong>";
+            resultDiv.innerHTML = `
+                <h3>年齢別の必要保障額リスク</h3>
+                <p>${assetNote}<br>遺族の生活費を${survivorRatio*100}%、遺族年金（概算）を考慮して計算。死亡退職金は考慮されていません。あくまで簡易的な目安です。</p>
+                <p style="font-size:1.1rem; font-weight:bold;">
+                    ⚠️ <span style="color:#ef4444;">${maxRiskAge}歳</span>で万一の事態が発生した場合に、必要保障額が最大（<span style="color:#ef4444;">${formatAmount(maxShortfall)}万円</span>）となります。
+                </p>
+            `;
+
+            const insuranceData = { term: [], income: [], whole: [] };
+            if (maxShortfall > 0) {
+                const termEndAge = maxRiskAge + 20;
+                const incomeEndAge = 65;
+                
+                chartLabels.forEach(ageStr => {
+                    const age = parseInt(ageStr, 10);
+                    insuranceData.term.push(age >= maxRiskAge && age <= termEndAge ? maxShortfall : null);
+                    insuranceData.whole.push(age >= maxRiskAge ? maxShortfall : null);
+                    if (age >= maxRiskAge && age <= incomeEndAge) {
+                        const progress = (age - maxRiskAge) / (incomeEndAge - maxRiskAge);
+                        insuranceData.income.push(maxShortfall * (1 - progress));
+                    } else {
+                        insuranceData.income.push(null);
+                    }
+                });
+            }
+
+            if (chartLabels.length > 0) {
+              renderInsuranceChart(chartLabels, chartData, insuranceData);
+            }
+            document.getElementById('insuranceModal').classList.add('show');
+            btn.disabled = false;
+            btn.textContent = '▶ 年齢別リスクを計算';
+        }, 10);
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => {
+      window.print();
+    });
+
+    // --- 高度分析ロジックの制御 ---
+    setupModal('advancedAnalysisModal', null, 'closeAdvancedAnalysisBtn');
+
+    document.getElementById('runAdvancedAnalysisMainBtn').addEventListener('click', () => { 
+        if (!lastSimulation) {
+            alert('先に「シミュレーション実行」を押してください。');
+            return;
+        }
+
+        const btn = document.getElementById('runAdvancedAnalysisMainBtn'); 
+        const resultDiv = document.getElementById('advancedRiskResultMain'); 
+        resultDiv.innerHTML = '📈 高度な分析を実行中... (これには数秒かかる場合があります)';
+        resultDiv.style.display = 'block'; 
+        btn.disabled = true;
+        btn.textContent = '分析中...';
+
+        setTimeout(() => {
+            try {
+                const originalParams = buildParamsFromForm(document.getElementById('lifePlanForm'));
+                const baseSim = lastSimulation;
+                const baseAssets = (baseSim.cashHistory.at(-1) || 0) + (baseSim.investHistory.at(-1) || 0);
+
+                let reportHTML = ''; 
+
+                // --- 1. モンテカルロ・シミュレーション ---
+                reportHTML += '<h3>1. モンテカルロ・シミュレーション（1000回試行）</h3>';
+                const MONTE_CARLO_RUNS = 1000;
+                let failureCount = 0;
+                const finalAssetsMonte = [];
+                let maxDeficitMonte = 0;
+                let firstDeficitAgeMonteSum = 0;
+                let deficitCaseCount = 0;
+
+                for (let i = 0; i < MONTE_CARLO_RUNS; i++) {
+                    const sim = runSimulation(originalParams, { useVolatility: true }); 
+                    if (!sim) continue;
+                    
+                    const finalAsset = (sim.cashHistory.at(-1) || 0) + (sim.investHistory.at(-1) || 0);
+                    finalAssetsMonte.push(finalAsset);
+
+                    let simFailed = false;
+                    let firstDeficitAge = -1;
+                    for (let j = 0; j < sim.cashHistory.length; j++) {
+                        if (sim.cashHistory[j] < 0) {
+                            simFailed = true;
+                            if(firstDeficitAge === -1) firstDeficitAge = (originalParams.family?.self?.age || 30) + j;
+                            maxDeficitMonte = Math.min(maxDeficitMonte, sim.cashHistory[j]);
+                        }
+                    }
+                    if (simFailed) {
+                        failureCount++;
+                        if (firstDeficitAge !== -1) {
+                            firstDeficitAgeMonteSum += firstDeficitAge;
+                            deficitCaseCount++;
+                        }
+                    }
+                }
+
+                finalAssetsMonte.sort((a, b) => a - b);
+                const medianAssets = finalAssetsMonte[Math.floor(MONTE_CARLO_RUNS / 2)];
+                const lower10Assets = finalAssetsMonte[Math.floor(MONTE_CARLO_RUNS * 0.1)];
+                const failureRate = (failureCount / MONTE_CARLO_RUNS) * 100;
+                const avgDeficitAge = deficitCaseCount > 0 ? (firstDeficitAgeMonteSum / deficitCaseCount).toFixed(0) : '-';
+
+                if (failureRate > 0) {
+                    reportHTML += `<p style="color:red; font-weight:bold;">
+                        ⚠️ 資産がマイナスになる確率: ${failureRate.toFixed(1)}％
+                    </p>`;
+                    reportHTML += `<ul style="font-size: 0.9em;">
+                        <li>平均破綻開始年齢: 約 ${avgDeficitAge} 歳</li>
+                        <li>最大不足額（ワーストケース）: ${formatAmount(Math.abs(maxDeficitMonte))} 万円</li>
+                    </ul>`;
+                } else {
+                    reportHTML += `<p style="color:green; font-weight:bold;">
+                        ✅ 1000回の試行で資産がマイナスになるケースはありませんでした。
+                    </p>`;
+                }
+                reportHTML += '<h4 style="font-size: 0.95em; margin-bottom: 8px;">将来の資産額（100歳時点）の確率的予測:</h4>';
+                reportHTML += `<ul style="font-size: 0.9em;">
+                    <li><b>中央値 (50%)</b>: ${formatAmount(medianAssets)} 万円 (まあまあ順調な場合)</li>
+                    <li><b>下位10%</b>: ${formatAmount(lower10Assets)} 万円 (かなり不運だった場合)</li>
+                </ul><hr style="margin: 20px 0;">`;
+
+                // --- 2. 感応度分析 ---
+                reportHTML += '<h3>2. 感応度分析（最終資産への影響）</h3>';
+                reportHTML += '<p style="font-size: 0.9em;">基本プラン（固定利回り）と比較し、変数が100歳時点の資産に与える影響を試算します。</p>';
+                
+                const rateParams = JSON.parse(JSON.stringify(originalParams));
+                rateParams.assetConfig.forEach(cfg => { cfg.rate = (cfg.rate || 0) + 1; cfg.takeoutRate = (cfg.takeoutRate || 0) + 0.5; });
+                const rateSim = runSimulation(rateParams, { useVolatility: false }); 
+                const rateAssets = (rateSim.cashHistory.at(-1) || 0) + (rateSim.investHistory.at(-1) || 0);
+                const rateDiff = rateAssets - baseAssets;
+
+                const livingParams = JSON.parse(JSON.stringify(originalParams));
+                livingParams.livingMonthly += 1;
+                const livingSim = runSimulation(livingParams, { useVolatility: false }); 
+                const livingAssets = (livingSim.cashHistory.at(-1) || 0) + (livingSim.investHistory.at(-1) || 0);
+                const livingDiff = livingAssets - baseAssets;
+                
+                const inflParams = JSON.parse(JSON.stringify(originalParams));
+                inflParams.inflationPct += 0.5;
+                const inflSim = runSimulation(inflParams, { useVolatility: false }); 
+                const inflAssets = (inflSim.cashHistory.at(-1) || 0) + (inflSim.investHistory.at(-1) || 0);
+                const inflDiff = inflAssets - baseAssets;
+
+                reportHTML += `<ul style="list-style-type: none; padding-left: 0; font-size: 0.95em;">
+                    <li style="margin-bottom: 8px;">運用利回り <b>+1%</b> の影響: <b style="font-size: 1.1em; color:${rateDiff > 0 ? 'green' : 'red'};">${formatAmount(rateDiff)}</b> 万円</li>
+                    <li style="margin-bottom: 8px;">毎月の生活費 <b>+1万円</b> の影響: <b style="font-size: 1.1em; color:${livingDiff > 0 ? 'green' : 'red'};">${formatAmount(livingDiff)}</b> 万円</li>
+                    <li style="margin-bottom: 8px;">物価上昇率 <b>+0.5%</b> の影響: <b style="font-size: 1.1em; color:${inflDiff > 0 ? 'green' : 'red'};">${formatAmount(inflDiff)}</b> 万円</li>
+                </ul>`;
+
+                resultDiv.innerHTML = reportHTML;
+                resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            } catch (error) {
+                console.error("高度な資産分析中にエラーが発生しました:", error);
+                resultDiv.innerHTML = '分析中にエラーが発生しました。コンソールを確認してください。';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💹 高度な資産分析 (モンテカルロ) を実行'; 
+            }
+        }, 100); 
+    });
+
+  </script>
+</body>
+</html>
